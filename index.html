@@ -1,0 +1,2784 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мисия БЕЛ: Лабораторията на Мартин</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            lab: {
+              dark: '#0f172a',
+              panel: '#1e293b',
+              accent: '#6366f1',
+              cyan: '#06b6d4',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Инженерна мрежа за фона на заглавната част */
+    .lab-grid-bg {
+      background-color: #0f172a;
+      background-image:
+        radial-gradient(at 80% 0%, rgba(99, 102, 241, 0.25) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(6, 182, 212, 0.2) 0px, transparent 50%),
+        linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 24px 24px, 24px 24px;
+    }
+
+    /* Пулсиращ индикатор за запис */
+    @keyframes recPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.6; }
+    }
+    .rec-pulse {
+      animation: recPulse 1.2s ease-in-out infinite;
+    }
+
+    /* Плавна поява на карти */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeSlideUp 0.25s ease-out forwards;
+    }
+
+    /* Скриване на скролбара за хоризонталните табове на мобилни */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- ==================== ГОРЕН ИНЖЕНЕРЕН ПАНЕЛ (HUD) ==================== -->
+  <header class="lab-grid-bg text-white shadow-lg border-b border-indigo-500/30 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Лого и профил на Мартин -->
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 p-0.5 shadow-lg shadow-indigo-500/30 shrink-0">
+            <div class="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center">
+              <!-- Робот-конструктор SVG икона -->
+              <svg class="w-7 h-7 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="10" rx="2" />
+                <circle cx="12" cy="5" r="2" />
+                <path d="M12 7v4" />
+                <line x1="8" y1="16" x2="8" y2="16" stroke-width="3" />
+                <line x1="16" y1="16" x2="16" y2="16" stroke-width="3" />
+              </svg>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-base sm:text-xl font-extrabold tracking-tight text-white">
+                Мисия БЕЛ: <span class="text-cyan-400">Лабораторията на Мартин</span>
+              </h1>
+              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                4. КЛАС // v2.0
+              </span>
+            </div>
+            <div class="flex items-center gap-2 text-xs sm:text-sm text-slate-300 mt-0.5">
+              <span id="rankBadge" class="font-semibold text-amber-300">Стажант-конструктор</span>
+              <span class="text-slate-500">•</span>
+              <span id="todayDateLabel" class="font-mono text-xs text-slate-400"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Статистика и контролни бутони -->
+        <div class="flex items-center gap-2 sm:gap-3 ml-auto">
+          <!-- Серия от дни (Streak) -->
+          <div class="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 px-2.5 py-1.5 rounded-xl" title="Дни подред">
+            <span class="text-base">🔥</span>
+            <span id="streakCount" class="font-mono font-bold text-sm text-orange-400">1</span>
+            <span class="hidden md:inline text-xs text-slate-400">дни</span>
+          </div>
+
+          <!-- Дневни мисии -->
+          <div class="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 px-2.5 py-1.5 rounded-xl" title="Изпълнени мисии днес">
+            <span class="text-cyan-400 font-mono font-bold text-sm" id="dailyCounter">0/5</span>
+            <span class="hidden md:inline text-xs text-slate-400">мисии</span>
+          </div>
+
+          <!-- Звук -->
+          <button id="soundToggleBtn" onclick="toggleSound()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 transition" title="Включи/Изключи звук">
+            <svg id="soundOnIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+            <svg id="soundOffIcon" class="w-5 h-5 hidden text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+          </button>
+
+          <!-- Настройки: Връзка с Google Drive -->
+          <button id="driveSettingsBtn" onclick="openDriveSettingsModal(false)" class="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 transition" title="Връзка с Google Drive">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span id="driveStatusDot" class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-slate-900"></span>
+          </button>
+
+          <!-- Отчет за днес -->
+          <button onclick="openReportModal()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs sm:text-sm font-semibold transition">
+            <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <span class="hidden sm:inline">Отчет за днес</span>
+          </button>
+
+          <!-- Главен бутон: Изпрати на мис -->
+          <button id="headerSendMissBtn" onclick="sendToMiss()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 text-xs sm:text-sm font-extrabold shadow-lg shadow-emerald-500/25 transition">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span>Изпрати на мис</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- XP Прогрес бар -->
+      <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center gap-3">
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span class="font-mono text-xs font-bold text-cyan-400">XP</span>
+          <span id="xpValue" class="font-mono text-sm font-bold text-white">0</span>
+        </div>
+        <div class="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700/70">
+          <div id="xpProgressBar" class="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 rounded-full transition-all duration-500" style="width: 5%"></div>
+        </div>
+        <div id="nextRankLabel" class="text-[11px] sm:text-xs font-mono text-slate-400 shrink-0">
+          До следващ ранг: 100 XP
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== ОСНОВНО СЪДЪРЖАНИЕ ==================== -->
+  <main class="max-w-6xl w-full mx-auto px-4 py-5 flex-1 space-y-5">
+
+    <!-- СЕЛЕКТОР ЗА ТРУДНОСТ И НАГРАДИ -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            Избери ниво на трудност и награда
+          </h2>
+          <p class="text-xs text-slate-500">По-високата трудност носи повече XP точки и по-бързо те издига до Суперотличник!</p>
+        </div>
+        <span id="activeDiffHint" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 self-start sm:self-center">
+          Активно: Инженер (+20 XP)
+        </span>
+      </div>
+
+      <div id="difficultySelector" class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <!-- Зарежда се динамично от JS -->
+      </div>
+    </section>
+
+    <!-- НАВИГАЦИЯ НА 5-ТЕ ДНЕВНИ МИСИИ -->
+    <nav class="flex gap-2 overflow-x-auto no-scrollbar pb-1" id="missionTabs">
+      <!-- Зарежда се динамично от JS -->
+    </nav>
+
+    <!-- РАБОТНА ЗОНА НА АКТИВНАТА МИСИЯ -->
+    <section id="missionWorkspace" class="animate-fade-in">
+      <!-- Зарежда се динамично от JS -->
+    </section>
+
+  </main>
+
+  <!-- ==================== МОДАЛЕН ПРОЗОРЕЦ: ОТЧЕТ ЗА ДНЕС ==================== -->
+  <div id="reportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-fade-in">
+      <div class="lab-grid-bg text-white px-6 py-4 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold flex items-center gap-2">
+            📋 Отчет за днес — Мартин (4б)
+          </h3>
+          <p id="reportDateSub" class="text-xs text-slate-300 font-mono mt-0.5"></p>
+        </div>
+        <button onclick="closeReportModal()" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-3">
+            <div class="text-xs text-indigo-600 font-semibold">Мисии днес</div>
+            <div id="repMissions" class="text-2xl font-extrabold text-indigo-900 font-mono mt-0.5">0/5</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-3">
+            <div class="text-xs text-emerald-600 font-semibold">XP днес</div>
+            <div id="repTodayXp" class="text-2xl font-extrabold text-emerald-900 font-mono mt-0.5">+0</div>
+          </div>
+          <div class="bg-amber-50 border border-amber-100 rounded-2xl p-3">
+            <div class="text-xs text-amber-600 font-semibold">Общо XP</div>
+            <div id="repTotalXp" class="text-2xl font-extrabold text-amber-900 font-mono mt-0.5">0</div>
+          </div>
+        </div>
+
+        <div id="reportList" class="space-y-2">
+          <!-- Детайли по мисии -->
+        </div>
+
+        <!-- Статус на прикачените аудио записи -->
+        <div id="reportAudioSummary" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
+          <!-- Попълва се динамично -->
+        </div>
+
+        <div class="flex flex-col sm:flex-row flex-wrap gap-2 pt-2 border-t border-slate-100">
+          <button id="modalSendMissBtn" onclick="sendToMiss()" class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 text-sm font-extrabold shadow-md transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span>Изпрати на мис</span>
+          </button>
+          <button onclick="copyReportText()" class="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Копирай текста
+          </button>
+          <button onclick="closeReportModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">
+            Затвори
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== МОДАЛЕН ПРОЗОРЕЦ: ВРЪЗКА С GOOGLE DRIVE ==================== -->
+  <div id="driveSettingsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 animate-fade-in">
+      <div class="lab-grid-bg text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div>
+          <h3 class="text-lg font-bold flex items-center gap-2">
+            ⚙️ Връзка с Google Drive (за учителя)
+          </h3>
+          <p class="text-xs text-slate-300 mt-0.5">Получавай аудио записите и резултатите на Мартин директно в твоя Drive</p>
+        </div>
+        <button onclick="closeDriveSettingsModal()" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <div id="driveSetupNotice" class="hidden p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs sm:text-sm font-medium">
+          ⚠️ Все още няма въведен адрес към Google Drive. Постави Web App URL от Google Apps Script по-долу, за да заработи бутонът <strong>„Изпрати на мис“</strong>.
+        </div>
+
+        <!-- Поле за Web App URL -->
+        <div class="space-y-2">
+          <label for="driveEndpointInput" class="block text-sm font-bold text-slate-800">
+            Google Apps Script Web App URL
+          </label>
+          <input id="driveEndpointInput" type="url" placeholder="https://script.google.com/macros/s/.../exec"
+            class="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:outline-none text-sm font-mono text-slate-800" />
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button onclick="saveDriveEndpoint()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition">
+              💾 Запази връзката
+            </button>
+            <button onclick="copyStudentLink()" class="px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-bold transition flex items-center gap-1.5">
+              🔗 Копирай готов линк за Мартин
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500">
+            Когато изпратиш готовия линк с параметър <code>?endpoint=...</code> на Мартин, приложението ще се свърже автоматично с твоя Drive без той да настройва нищо.
+          </p>
+        </div>
+
+        <!-- Готов Google Apps Script код -->
+        <div class="border-t border-slate-200 pt-4 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <h4 class="text-sm font-bold text-slate-800">📜 Готов код за Google Apps Script (настройка за 2 мин.)</h4>
+            <button onclick="copyAppsScriptCode()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-400 text-xs font-bold transition">
+              📋 Копирай кода
+            </button>
+          </div>
+          <ol class="text-xs text-slate-600 space-y-1 list-decimal list-inside">
+            <li>Отвори <strong>script.google.com</strong> → <em>New Project</em> и постави кода по-долу.</li>
+            <li>Натисни <strong>Deploy → New deployment → Web app</strong>.</li>
+            <li>Избери <em>Execute as: Me</em> и <em>Who has access: Anyone</em> → Deploy и копирай URL-а горе.</li>
+          </ol>
+          <pre id="appsScriptCodeBlock" class="p-3 rounded-xl bg-slate-950 text-cyan-300 font-mono text-[11px] overflow-x-auto max-h-48 leading-relaxed border border-slate-800">function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var folderName = "Мисия БЕЛ - Мартин";
+    var folders = DriveApp.getFoldersByName(folderName);
+    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+
+    var stamp = (data.date || new Date().toISOString()).replace(/[:T]/g, "-").slice(0, 16);
+    var readingUrl = "";
+    var oralUrl = "";
+
+    if (data.readingAudioBase64) {
+      var rMime = data.readingAudioMime || "audio/webm";
+      var rExt = rMime.indexOf("mp4") !== -1 ? "m4a" : "webm";
+      var rBlob = Utilities.newBlob(Utilities.base64Decode(data.readingAudioBase64), rMime, "Chetene_" + stamp + "." + rExt);
+      readingUrl = folder.createFile(rBlob).getUrl();
+    }
+
+    if (data.oralAudioBase64) {
+      var oMime = data.oralAudioMime || "audio/webm";
+      var oExt = oMime.indexOf("mp4") !== -1 ? "m4a" : "webm";
+      var oBlob = Utilities.newBlob(Utilities.base64Decode(data.oralAudioBase64), oMime, "Ustni_" + stamp + "." + oExt);
+      oralUrl = folder.createFile(oBlob).getUrl();
+    }
+
+    var sheetName = "Отчети - Мартин БЕЛ";
+    var files = folder.getFilesByName(sheetName);
+    var ss = files.hasNext() ? SpreadsheetApp.open(files.next()) : SpreadsheetApp.create(sheetName);
+    if (!files.hasNext()) {
+      DriveApp.getFileById(ss.getId()).moveTo(folder);
+      ss.getActiveSheet().appendRow([
+        "Дата", "Ученик", "Ниво", "XP Днес", "Общо XP",
+        "Изпълнени мисии", "Диктовка (%)", "Диктовка текст",
+        "Правила", "Конструктор", "Запис Четене", "Запис Устни"
+      ]);
+    }
+
+    var xpObj = data.xp || {};
+    ss.getActiveSheet().appendRow([
+      data.date || "",
+      data.student || "Мартин",
+      data.level || "",
+      xpObj.today || 0,
+      xpObj.total || 0,
+      (data.completedMissions || []).join(", "),
+      data.dictationScore !== null && data.dictationScore !== undefined ? data.dictationScore + "%" : "-",
+      data.dictationText || "",
+      data.rulesScore || "-",
+      data.constructorScore || "-",
+      readingUrl,
+      oralUrl
+    ]);
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ПОТВЪРЖДЕНИЕ „ИЗПРАТЕНО НА МИС!“ ==================== -->
+  <div id="sentSuccessBanner" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border-2 border-emerald-400 animate-fade-in space-y-3">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-4xl shadow-inner">
+        🚀
+      </div>
+      <h3 class="text-xl font-extrabold text-slate-900">Изпратено на мис!</h3>
+      <p id="sentSuccessDetails" class="text-sm text-slate-600">
+        Резултатите и записите ти бяха изпратени успешно към Google Drive на мис. Страхотна работа, Мартин!
+      </p>
+      <button onclick="closeSentBanner()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">
+        Супер! Продължавам
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST СЪОБЩЕНИЯ ==================== -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- ==================== JAVASCRIPT ЛОГИКА ==================== -->
+  <script>
+    // =========================================================================
+    // 1. КОНФИГУРАЦИЯ, НИВА НА ТРУДНОСТ И РАНГОВЕ
+    // =========================================================================
+    const DIFFICULTIES = {
+      warmup: {
+        id: 'warmup',
+        name: 'Загрявка',
+        sub: 'По-лесни задачи',
+        xp: 10,
+        badge: '+10 XP',
+        colorClass: 'emerald',
+        activeBg: 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-200',
+        pillBg: 'bg-emerald-100 text-emerald-800',
+        promptDesc: 'много лесно ниво за загрявка в 4. клас — кратки, ясни изречения и базови думи'
+      },
+      engineer: {
+        id: 'engineer',
+        name: 'Инженер',
+        sub: 'Средна трудност',
+        xp: 20,
+        badge: '+20 XP',
+        colorClass: 'blue',
+        activeBg: 'bg-blue-50 border-blue-500 ring-2 ring-blue-200',
+        pillBg: 'bg-blue-100 text-blue-800',
+        promptDesc: 'стандартно ниво за 4. клас — умерено сложни изречения и правила от учебната програма'
+      },
+      excellent: {
+        id: 'excellent',
+        name: 'Отличник (6)',
+        sub: 'Високо ниво',
+        xp: 35,
+        badge: '+35 XP',
+        colorClass: 'purple',
+        activeBg: 'bg-purple-50 border-purple-500 ring-2 ring-purple-200',
+        pillBg: 'bg-purple-100 text-purple-800',
+        promptDesc: 'ниво за отличник (оценка 6) в 4. клас — по-богат речник, сложни изречения и тънки правописни правила'
+      },
+      super: {
+        id: 'super',
+        name: 'Суперотличник',
+        sub: 'Скала 6–7 🚀',
+        xp: 50,
+        badge: '+50 XP 🚀',
+        colorClass: 'amber',
+        activeBg: 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-500 ring-2 ring-amber-200',
+        pillBg: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white',
+        promptDesc: 'супер високо ниво (скала 6-7, олимпиадно за 4. клас) — предизвикателни думи, пряка реч, обръщения, двойно нн, членуване и логически капани'
+      }
+    };
+
+    const RANKS = [
+      { minXp: 0,   title: 'Стажант-конструктор' },
+      { minXp: 100, title: 'Младши инженер' },
+      { minXp: 250, title: 'Инженер на думите' },
+      { minXp: 450, title: 'Архитект на текста' },
+      { minXp: 700, title: 'Майстор на кода' },
+      { minXp: 1000, title: 'Суперотличник 6–7 🚀' }
+    ];
+
+    const MISSIONS_META = [
+      { id: 'm1', num: 1, title: 'Четене и Запис', icon: '🎙️', short: 'Текст 1 + Запис' },
+      { id: 'm2', num: 2, title: 'Устни въпроси', icon: '💬', short: 'Текст 2 + Отговори' },
+      { id: 'm3', num: 3, title: 'Диктовка', icon: '✍️', short: 'Слушане и писане' },
+      { id: 'm4', num: 4, title: 'Правила в игра', icon: '⚡', short: 'УП 4. клас' },
+      { id: 'm5', num: 5, title: 'Конструкторска лаб.', icon: '🔧', short: '3 инженерни игри' }
+    ];
+
+    // =========================================================================
+    // 2. БОГАТА ВГРАДЕНА БАНКА (FALLBACK) ПО НИВА НА ТРУДНОСТ
+    // =========================================================================
+    const FALLBACK_READING_1 = {
+      warmup: [
+        {
+          title: 'Малкият робот Пикси',
+          topic: 'Роботика',
+          text: 'В една малка работилница живееше робот на име Пикси. Той имаше сини колела и ярка лампа на главата. Всяка сутрин Пикси помагаше на своя изобретател да подрежда инструментите. Най-много обичаше да носи отвертки и гаечни ключове. Веднъж Пикси намери изгубена батерия под масата и я върна веднага. Изобретателят се усмихна и му даде нова блестяща антена.'
+        },
+        {
+          title: 'Мостът от клечки',
+          topic: 'Технологии',
+          text: 'Борис реши да построи мост от дървени клечки. Първо начерта план на бял лист. После залепи основите много внимателно. Когато мостът изсъхна, той сложи върху него малка количка. Мостът издържа без да се огъне. Борис разбра, че добрият план е най-важната част от строежа.'
+        }
+      ],
+      engineer: [
+        {
+          title: 'Соларната кола на бъдещето',
+          topic: 'Изобретения',
+          text: 'На училищното състезание по технологии четвъртокласниците представиха миниатюрна кола, задвижвана от слънчева светлина. Върху покрива ѝ беше монтиран малък фотоволтаичен панел, който превръщаше слънчевите лъчи в електричество. Когато слънцето се скри зад облак, колата забави ход, но не спря напълно, защото имаше вградена батерия. Журито аплодира младите инженери за тяхната изобретателност и екологична идея.'
+        },
+        {
+          title: 'Тайната на марсохода',
+          topic: 'Космос',
+          text: 'Далеч на Червената планета един шестколесен робот изследва прашните скали. Учените от Земята му изпращат команди чрез радиосигнали, които пътуват минути наред. Роботът има специална механична ръка с камера и лазер. С тях той проверява дали в почвата някога е имало вода. Всяка снимка, която изпраща, помага на хората да опознаят Космоса по-добре.'
+        }
+      ],
+      excellent: [
+        {
+          title: 'Как работят триизмерните принтери',
+          topic: 'Технологии',
+          text: 'Триизмерният принтер прилича на вълшебна работилница, която създава истински предмети от дигитален чертеж. Първо инженерът моделира обекта на компютър със специална програма. След това машината разтапя тънка пластмасова нишка и я полага слой върху слой с невероятна точност. Така за няколко часа могат да се отпечатат зъбни колела, части за роботи или дори макети на старинни крепости.'
+        },
+        {
+          title: 'Невидимата мрежа на гората',
+          topic: 'Природа',
+          text: 'Дълбоко под горската почва дърветата не растат сами, а са свързани в удивителна подземна мрежа. Тънки гъбни нишки обвиват корените им и пренасят вода, хранителни вещества и дори химични сигнали. Когато някое дърво бъде нападнато от вредители, то предупреждава съседите си по тази природна система. Учените наричат това явление „горски интернет“.'
+        }
+      ],
+      super: [
+        {
+          title: 'Архимед и огледалата на Сиракуза',
+          topic: 'История на науката',
+          text: 'Преди повече от две хиляди години древногръцкият учен Архимед изумил целия свят със своите механични изобретения. Легендата разказва, че при обсадата на родния му град Сиракуза той използвал полирани бронзови щитове като огромни вдлъбнати огледала. Насочвайки слънчевите лъчи в една-единствена точка, защитниците подпалили платната на вражеските кораби. Макар съвременните физици все още да спорят дали това е било възможно, геният на Архимед остава символ на конструкторското мислене.'
+        },
+        {
+          title: 'Бионика: когато природата учи инженерите',
+          topic: 'Наука и инженерство',
+          text: 'Биониката е наука, която черпи вдъхновение от съвършените конструкции в живата природа. Например японският високоскоростен влак имал проблем със силния шум при излизане от тунели. Инженерите наблюдавали птицата земеродно рибарче, която се гмурка във водата почти без пръски, и оформили носа на влака по подобие на клюна ѝ. Резултатът бил впечатляващ: влакът станал по-тих, по-бърз и започнал да пести електроенергия.'
+        }
+      ]
+    };
+
+    const FALLBACK_READING_2 = {
+      warmup: [
+        {
+          title: 'Умната хранилка за птици',
+          text: 'Децата от четвърти клас направиха дървена хранилка за птици в училищния двор. Сложиха в нея слънчогледови семки и овесени ядки. За да не вали дъжд върху храната, те изработиха наклонен покрив от пластмасова бутилка. Още на първата сутрин долетяха три синигера и едно врабче.',
+          questions: [
+            { q: 'От какво направиха децата покрива на хранилката и защо?', hint: 'Покривът е направен от пластмасова бутилка, за да не вали дъжд върху храната.' },
+            { q: 'Каква храна сложиха вътре?', hint: 'Слънчогледови семки и овесени ядки.' },
+            { q: 'Кои птици долетяха на първата сутрин?', hint: 'Три синигера и едно врабче.' }
+          ]
+        }
+      ],
+      engineer: [
+        {
+          title: 'Загадката на компаса',
+          text: 'Преди векове моряците трудно намирали пътя си в открито море, когато небето било покрито с облаци и звездите не се виждали. Всичко се променило с откриването на магнитния компас. Неговата тънка стрелка винаги сочи на север, защото Земята действа като огромен магнит. Благодарение на това просто устройство корабите започнали да прекосяват цели океани.',
+          questions: [
+            { q: 'Защо моряците се затруднявали преди изобретяването на компаса?', hint: 'Когато имало облаци, не виждали звездите и трудно намирали пътя си.' },
+            { q: 'Защо стрелката на компаса винаги сочи на север?', hint: 'Защото Земята действа като огромен магнит.' },
+            { q: 'Как компасът променил морските пътешествия?', hint: 'Корабите вече можели сигурно да прекосяват цели океани.' }
+          ]
+        }
+      ],
+      excellent: [
+        {
+          title: 'Водният часовник на древните',
+          text: 'Преди механичните часовници хората измервали времето със слънчеви часовници, но те не работели през нощта или в облачно време. Затова древните египтяни и гърци създали клепсидрата — воден часовник. Водата капела равномерно от един съд в друг, а по специални чертички от вътрешната страна хората отчитали изминалите часове. Така времето можело да се мери денонощно.',
+          questions: [
+            { q: 'Какъв бил основният недостатък на слънчевия часовник?', hint: 'Не можел да работи през нощта или когато небето е облачно.' },
+            { q: 'Как работел водният часовник (клепсидрата)?', hint: 'Водата капела равномерно от един съд в друг, а часовете се отчитали по чертички.' },
+            { q: 'Какво ново предимство дала клепсидрата на хората?', hint: 'Позволила измерването на времето денонощно (и денем, и нощем).' },
+            { q: 'Ако трябва да построиш клепсидра днес, какъв проблем би възникнал през зимата?', hint: 'Водата може да замръзне при ниски температури и часовникът ще спре.' }
+          ]
+        }
+      ],
+      super: [
+        {
+          title: 'Кодът на пчелния танц',
+          text: 'Когато пчела разузнавачка открие богата поляна с цветя, тя се връща в кошера и изпълнява сложен „танц на осмицата“. Ъгълът, под който танцува спрямо слънцето, показва точната посока към цветовете, а продължителността на вибрирането разкрива разстоянието до тях. Без думи и без карти, пчелите предават прецизни координати — истински природен алгоритъм за навигация.',
+          questions: [
+            { q: 'Какви два вида информация предава пчелата чрез своя танц?', hint: 'Точната посока към поляната (чрез ъгъла спрямо слънцето) и разстоянието (чрез продължителността на вибрирането).' },
+            { q: 'Защо авторът нарича пчелния танц „природен алгоритъм“?', hint: 'Защото следва точни правила и стъпки за предаване на координати, подобно на компютърна програма.' },
+            { q: 'Каква е ролята на слънцето в тази система за навигация?', hint: 'Служи като ориентир, спрямо който се определя ъгълът и посоката на полета.' },
+            { q: 'По какво си приличат пчелният танц и програмирането на робот?', hint: 'И при двете се подават точни инструкции (посока и разстояние), за да се стигне до определена цел.' }
+          ]
+        }
+      ]
+    };
+
+    const FALLBACK_DICTATIONS = {
+      warmup: [
+        {
+          ruleFocus: 'Главни букви, точка и проверка на съгласни',
+          sentences: [
+            'Малкият робот свети в тъмната стая.',
+            'Той има здрав корпус и две бързи колела.',
+            'Мартин обича да строи високи кули от блокчета.'
+          ]
+        },
+        {
+          ruleFocus: 'Звучни и беззвучни съгласни в края на думата',
+          sentences: [
+            'Снегът покри стария град и високия бряг.',
+            'Един млад гълъб кацна на прозореца.',
+            'Кучето залая весело в двора.'
+          ]
+        }
+      ],
+      engineer: [
+        {
+          ruleFocus: 'Членуване (-ът/-а), степенуване (по-/най-) и сродни думи',
+          sentences: [
+            'Инженерът провери най-важния кабел на машината.',
+            'Слънчевият лъч освети широкия прозорец на лабораторията.',
+            'Новият модел е по-бърз и по-лек от стария.',
+            'Учениците записаха резултатите в своите тетрадки.'
+          ]
+        },
+        {
+          ruleFocus: 'Неударени гласни, глаголи в минало време',
+          sentences: [
+            'Вчера сглобихме малък кораб от рециклирани материали.',
+            'Учителят похвали целия екип за точната работа.',
+            'Зимният вятър духаше силно над планинския връх.',
+            'Вечерта всички разгледаха звездното небе с телескоп.'
+          ]
+        }
+      ],
+      excellent: [
+        {
+          ruleFocus: 'Двойно -нн-, пълен/кратък член и обръщение',
+          sentences: [
+            'Мартине, провери ли дали есенният вятър е затворил вратата?',
+            'Истинният изобретател не се отказва при първата грешка.',
+            'Компютърът обработи данните за странния сигнал от Космоса.',
+            'Най-точният чертеж беше поставен на почетното място в клас.'
+          ]
+        }
+      ],
+      super: [
+        {
+          ruleFocus: 'Пряка реч, двойно -нн-, пълен член и сложни думи',
+          sentences: [
+            '„Готов ли е новият прототип?“ — попита главният конструктор.',
+            'Военният кораб премина покрай каменния бряг в ранната утрин.',
+            'Инженерът отговори уверено: „Системата работи безотказно!“',
+            'Временният успех не бива да спира най-любознателния изследовател.',
+            'Учениците от четвърти клас спечелиха първото място на олимпиадата.'
+          ]
+        }
+      ]
+    };
+
+    const FALLBACK_QUIZ = {
+      warmup: [
+        {
+          topic: 'Звучни и беззвучни съгласни',
+          rule: 'Когато не си сигурен каква съгласна се пише в края на думата, провери я с множествено число (напр. граД → граДове).',
+          question: 'Коя дума е написана ПРАВИЛНО?',
+          options: ['слатък плод', 'сладък плод', 'сладък плот', 'слатък плот'],
+          correct: 1,
+          explanation: 'Проверяваме: слаДки (Д) и плоДове (Д) → „сладък плод“.'
+        },
+        {
+          topic: 'Степенуване на прилагателни',
+          rule: 'Частиците „по-“ и „най-“ при прилагателни имена винаги се пишат с дефис (тире) пред думата.',
+          question: 'Избери правилно написаното съчетание:',
+          options: ['най бързия робот', 'най-бързия робот', 'найбързия робот', 'най - бързия робот'],
+          correct: 1,
+          explanation: '„най-бързия“ се пише с тире без интервали около него.'
+        },
+        {
+          topic: 'Глаголи — време',
+          rule: 'Глаголите показват действие в сегашно (сега), минало (вчера) или бъдеще (утре) време.',
+          question: 'В кое време е глаголът в изречението: „Утре ще сглобя нов дрон.“?',
+          options: ['Сегашно време', 'Минало време', 'Бъдеще време', 'Няма глагол'],
+          correct: 2,
+          explanation: 'Частицата „ще“ + глагол („ще сглобя“) показва бъдеще време.'
+        },
+        {
+          topic: 'Видове изречения',
+          rule: 'Въпросителното изречение завършва с „?“, съобщителното с „.“, а възклицателното с „!“.',
+          question: 'Какъв знак трябва да сложим в края на: „Колко батерии трябват за робота___“',
+          options: ['Точка (.)', 'Въпросителен знак (?)', 'Удивителен знак (!)', 'Запетая (,)'],
+          correct: 1,
+          explanation: 'Изречението задава въпрос („Колко...“), затова завършва с въпросителен знак.'
+        },
+        {
+          topic: 'Членуване (ж.р. и ср.р.)',
+          rule: 'Съществителните от женски род се членуват с -та (книгата), а от среден род с -то (колелото).',
+          question: 'Коя дума е членувана ПРАВИЛНО?',
+          options: ['морета (ед.ч.)', 'ракетато', 'батерията', 'схемато'],
+          correct: 2,
+          explanation: '„Батерия“ е от женски род (тази батерия), затова се членува с -та → батерията.'
+        }
+      ],
+      engineer: [
+        {
+          topic: 'Членуване на м.р. (-ът / -а)',
+          rule: 'Пълен член (-ът/-ят) се пише, когато думата е подлог (може да се замени с „ТОЙ“). Кратък (-а/-я) — когато се заменя с „НЕГО“.',
+          question: 'Попълни правилно: „___ изстреля ракетата успешно.“',
+          options: ['Космонавта', 'Космонавтът', 'Космонавти', 'Космонавтят'],
+          correct: 1,
+          explanation: 'Можем да заменим с „ТОЙ“ (Той изстреля ракетата) → пълен член: „Космонавтът“.'
+        },
+        {
+          topic: 'Глаголът „съм“',
+          rule: 'В 1. лице мн.ч. (ние) глаголът „съм“ е „СМЕ“, а във 2. лице мн.ч. (вие) е „СТЕ“.',
+          question: 'Кое изречение е написано ПРАВИЛНО?',
+          options: ['Ние с Матей сте готови.', 'Ние с Матей сме готови.', 'Те е в лабораторията.', 'Ти сите най-добър.'],
+          correct: 1,
+          explanation: '„Ние с Матей“ е 1. лице, множествено число → „сме“.'
+        },
+        {
+          topic: 'Неударени гласни',
+          rule: 'За да провериш неударена гласна (о/у или е/и), потърси сродна дума, в която ударението пада върху нея.',
+          question: 'Коя дума е написана ГРЕШНО?',
+          options: ['гора', 'зелен', 'студено', 'пулет'],
+          correct: 3,
+          explanation: 'Правилно е „полет“ (проверка: по́лет, летя), а не „пулет“.'
+        },
+        {
+          topic: 'Лични местоимения',
+          rule: 'Личните местоимения заместват имена: аз, ти, той, тя, то, ние, вие, те.',
+          question: 'Коя дума е лично местоимение в: „Той поправи повредения сензор.“?',
+          options: ['поправи', 'сензор', 'Той', 'повредения'],
+          correct: 2,
+          explanation: '„Той“ е лично местоимение за 3. лице, единствено число.'
+        },
+        {
+          topic: 'Числителни имена',
+          rule: 'Числителните имена показват брой (пет, десет) или ред (първи, четвърти).',
+          question: 'Кое от следните е числително РЕДНО име?',
+          options: ['четири', 'четвърти', 'четирима', 'четиристотин'],
+          correct: 1,
+          explanation: '„Четвърти“ показва ред при броене (кой по ред?) → числително редно.'
+        }
+      ],
+      excellent: [
+        {
+          topic: 'Двойно -нн- при прилагателни',
+          rule: 'Прилагателни от м.р. завършващи на -нен (каменен, есенен) получават двойно -нн- в ж.р., ср.р. и мн.ч. (каменна, есенно).',
+          question: 'Коя дума е написана ПРАВИЛНО?',
+          options: ['есена вечер', 'есенна вечер', 'дървенна маса', 'стъкленна чаша'],
+          correct: 1,
+          explanation: '„Есенен“ → „есенна“ (двойно -нн-). „Дървен“ и „стъклен“ НЕ завършват на -нен, затова са с едно „н“!'
+        },
+        {
+          topic: 'Обръщение и запетая',
+          rule: 'Обръщението винаги се отделя със запетая (или две запетаи, ако е в средата на изречението).',
+          question: 'Къде пунктуацията е ПРАВИЛНА?',
+          options: [
+            'Подай ми Мартине отвертката.',
+            'Подай ми, Мартине отвертката.',
+            'Подай ми, Мартине, отвертката.',
+            'Подай, ми Мартине, отвертката.'
+          ],
+          correct: 2,
+          explanation: '„Мартине“ е обръщение в средата на изречението, затова се огражда със запетаи от двете страни.'
+        },
+        {
+          topic: 'Пълен и кратък член (капан!)',
+          rule: 'Провери кой извършва действието! Подлогът (ТОЙ) получава -ът/-ят, а допълнението (НЕГО) получава -а/-я.',
+          question: 'Избери вярното изречение:',
+          options: [
+            'Робота намери ключът.',
+            'Роботът намери ключа.',
+            'Роботът намери ключът.',
+            'Робота намери ключа.'
+          ],
+          correct: 1,
+          explanation: 'Кой намери? Роботът (ТОЙ → пълен член). Какво намери? Ключа (НЕГО → кратък член).'
+        },
+        {
+          topic: 'Членуване на думи с -тел / -ар',
+          rule: 'Съществителни от м.р., завършващи на -тел, -ар, -яр (учител, изобретател, рибар), се членуват с мек член: -ят / -я.',
+          question: 'Коя форма е ПРАВИЛНА?',
+          options: ['Изобретателът спечели.', 'Изобретателят спечели.', 'Изобретатела спечели.', 'Изобретателя спечели.'],
+          correct: 1,
+          explanation: 'Думите на -тел получават мек член -ят (подлог: ТОЙ) → „Изобретателят“.'
+        },
+        {
+          topic: 'Правопис на представки',
+          rule: 'Представките „без-“, „из-“, „раз-“, „под-“, „над-“ НЕ се променят при писане, дори когато се чуват по различен начин.',
+          question: 'Коя дума е написана ПРАВИЛНО?',
+          options: ['исстрелвам', 'расказвам', 'подсказвам', 'бескраен'],
+          correct: 2,
+          explanation: 'Представката е „под-“ → „подсказвам“. Правилните форми на другите са: изстрелвам, разказвам, безкраен.'
+        }
+      ],
+      super: [
+        {
+          topic: 'Пряка реч (Скала 6–7)',
+          rule: 'Когато авторовата реч е ПРЕД пряката реч, слагаме двоеточие (:), отваряме кавички („) и започваме с главна буква.',
+          question: 'Кое изречение с пряка реч е написано БЕЗ ГРЕШКА?',
+          options: [
+            'Мартин каза, „Системата е готова!“',
+            'Мартин каза: „Системата е готова!“',
+            'Мартин каза: „системата е готова!“',
+            'Мартин каза „Системата е готова“!'
+          ],
+          correct: 1,
+          explanation: 'След „Мартин каза“ стои двоеточие, кавичките са отворени долу („), главна буква и удивителен знак преди затварящите кавички.'
+        },
+        {
+          topic: 'Двойно -тт- при членуване на ж.р.',
+          rule: 'Съществителни от женски род, завършващи на съгласна „т“ (радост, мощност, скорост), при членуване с -та получават двойно -тт-!',
+          question: 'Избери правилно членуваната дума:',
+          options: ['скороста на ракетата', 'скоростта на ракетата', 'мощноста на двигателя', 'ноща беше звездна'],
+          correct: 1,
+          explanation: 'скоросТ + Та = „скоростта“ (двойно -тт-). Същото важи за мощността и нощта!'
+        },
+        {
+          topic: 'Пълен член при съставно сказуемо',
+          rule: 'След глагола „съм“ (е, беше, ще бъде) съществителното или прилагателното в м.р. също се пише с ПЪЛЕН член (-ът/-ят)!',
+          question: 'Попълни правилно: „Саад е ___ ученик във випуска.“',
+          options: ['най-добрия', 'най-добрият', 'най добрият', 'найдобрият'],
+          correct: 1,
+          explanation: 'След „е“ (глаголът „съм“) стои сказуемно определение, което изисква пълен член → „най-добрият“.'
+        },
+        {
+          topic: 'Правопис на „не“ с глаголи и прилагателни',
+          rule: '„Не“ се пише ОТДЕЛНО от глаголи (не знам), но СЛЯТО с прилагателни и съществителни (невидим, невярно).',
+          question: 'В кой ред ВСИЧКИ думи са написани правилно?',
+          options: [
+            'незнам, невъзможно, не работя',
+            'не знам, невъзможно, не работя',
+            'не знам, не възможно, неработя',
+            'незнам, не възможно, не работя'
+          ],
+          correct: 1,
+          explanation: '„не знам“ и „не работя“ са глаголи (отделно), а „невъзможно“ е прилагателно (слято).'
+        },
+        {
+          topic: 'Обратен словоред и пълен член',
+          rule: 'Независимо дали подлогът е в началото или в края на изречението, той ВИНАГИ носи пълен член!',
+          question: 'Избери правилното изречение:',
+          options: [
+            'Наградата спечели четвъртокласника.',
+            'Наградата спечели четвъртокласникът.',
+            'Наградатъ спечели четвъртокласникът.',
+            'Робота поправи майстора.'
+          ],
+          correct: 1,
+          explanation: 'Кой спечели наградата? Четвъртокласникът (ТОЙ — подлог, макар да е в края) → пълен член!'
+        }
+      ]
+    };
+
+    // Конструкторска лаборатория (3 мини-игри x 4 нива)
+    const FALLBACK_CONSTRUCTOR = {
+      // Таб А: Сглоби думата (Морфемен чертеж)
+      wordBuilder: {
+        warmup: [
+          { clue: 'Да напишеш нещо отново отначало (глагол)', parts: [{ text: 'пре', type: 'prefix' }, { text: 'пис', type: 'root' }, { text: 'вам', type: 'suffix' }], distractors: [{ text: 'под', type: 'prefix' }, { text: 'ка', type: 'suffix' }] },
+          { clue: 'Малка къща (умалително съществително)', parts: [{ text: 'къщ', type: 'root' }, { text: 'ичк', type: 'suffix' }, { text: 'а', type: 'ending' }], distractors: [{ text: 'на', type: 'prefix' }, { text: 'ен', type: 'suffix' }] }
+        ],
+        engineer: [
+          { clue: 'Кораб, който плава под водата', parts: [{ text: 'под', type: 'prefix' }, { text: 'вод', type: 'root' }, { text: 'ниц', type: 'suffix' }, { text: 'а', type: 'ending' }], distractors: [{ text: 'над', type: 'prefix' }, { text: 'ар', type: 'suffix' }] },
+          { clue: 'Човек, който изобретява нови машини', parts: [{ text: 'из', type: 'prefix' }, { text: 'обрет', type: 'root' }, { text: 'ател', type: 'suffix' }], distractors: [{ text: 'без', type: 'prefix' }, { text: 'ник', type: 'suffix' }] }
+        ],
+        excellent: [
+          { clue: 'Нещо, което няма край (прилагателно, м.р.)', parts: [{ text: 'без', type: 'prefix' }, { text: 'край', type: 'root' }, { text: 'ен', type: 'suffix' }], distractors: [{ text: 'бес', type: 'prefix' }, { text: 'нн', type: 'suffix' }] },
+          { clue: 'Който има най-голяма сила (превъзходна степен)', parts: [{ text: 'най-', type: 'prefix' }, { text: 'сил', type: 'root' }, { text: 'ен', type: 'suffix' }], distractors: [{ text: 'по-', type: 'prefix' }, { text: 'ост', type: 'suffix' }] }
+        ],
+        super: [
+          { clue: 'Да изпратиш ракета в Космоса (глагол с двойно -сс-)', parts: [{ text: 'из', type: 'prefix' }, { text: 'стрел', type: 'root' }, { text: 'вам', type: 'suffix' }], distractors: [{ text: 'ис', type: 'prefix' }, { text: 'тел', type: 'suffix' }] },
+          { clue: 'Членувана дума за висока скорост (двойно -тт-)', parts: [{ text: 'скор', type: 'root' }, { text: 'ост', type: 'suffix' }, { text: 'та', type: 'ending' }], distractors: [{ text: 'та', type: 'prefix' }, { text: 'а', type: 'ending' }] }
+        ]
+      },
+      // Таб Б: Открий бъга в кода (Debugger)
+      debugger: {
+        warmup: [
+          {
+            words: ['Малкият', 'робот', 'има', 'нова', 'батерия', 'и', 'здрав', 'корпус.'],
+            bugIndex: 6,
+            bugWord: 'здраф',
+            options: ['здрав', 'здраф', 'здрави'],
+            explanation: 'Проверка със сродна дума: здраВи (В), затова се пише „здрав“.'
+          },
+          {
+            words: ['Вчера', 'видях', 'един', 'бял', 'гълъб', 'в', 'парка.'],
+            bugIndex: 4,
+            bugWord: 'гълъп',
+            options: ['гълъб', 'гълъп', 'гълаб'],
+            explanation: 'Проверка в множествено число: гълъБи (Б) → „гълъб“.'
+          }
+        ],
+        engineer: [
+          {
+            words: ['Инженерът', 'направи', 'най-бързия', 'дрон', 'в', 'класа.'],
+            bugIndex: 2,
+            bugWord: 'найбързия',
+            options: ['най-бързия', 'най бързия', 'найбързия'],
+            explanation: 'Частицата „най-“ при прилагателни винаги се пише с тире.'
+          },
+          {
+            words: ['Компютърът', 'изчисли', 'правилния', 'отговор', 'за', 'секунда.'],
+            bugIndex: 0,
+            bugWord: 'Компютъра',
+            options: ['Компютърът', 'Компютъра', 'Компютърят'],
+            explanation: '„Компютърът“ е подлог (ТОЙ изчисли) → изисква пълен член -ът.'
+          }
+        ],
+        excellent: [
+          {
+            words: ['В', 'есенната', 'утрин', 'роботът', 'започна', 'своята', 'мисия.'],
+            bugIndex: 1,
+            bugWord: 'есената',
+            options: ['есенната', 'есената', 'есенна'],
+            explanation: 'От „есенен“ → в женски род се пише с двойно -нн-: „есенната“.'
+          },
+          {
+            words: ['Учителят', 'похвали', 'Мартин', 'за', 'безпогрешния', 'код.'],
+            bugIndex: 0,
+            bugWord: 'Учителът',
+            options: ['Учителят', 'Учителът', 'Учителя'],
+            explanation: 'Думите на -тел в м.р. приемат мек член -ят (подлог) → „Учителят“.'
+          }
+        ],
+        super: [
+          {
+            words: ['Скоростта', 'на', 'новия', 'влак', 'впечатли', 'всички', 'учени.'],
+            bugIndex: 0,
+            bugWord: 'Скороста',
+            options: ['Скоростта', 'Скороста', 'Скоростът'],
+            explanation: 'скоросТ + Та = „Скоростта“ (двойно -тт- при членуване на ж.р. на -т).'
+          },
+          {
+            words: ['Мартин', 'каза:', '„Алгоритъмът', 'работи', 'отлично!“'],
+            bugIndex: 2,
+            bugWord: '„Алгоритъма',
+            options: ['„Алгоритъмът', '„Алгоритъма', '„алгоритъмът'],
+            explanation: 'В пряката реч започваме с главна буква, а „Алгоритъмът“ е подлог (ТОЙ работи) → пълен член.'
+          }
+        ]
+      },
+      // Таб В: Сглоби изречението (Алгоритъм)
+      sentenceBuilder: {
+        warmup: [
+          { correct: ['Синият', 'робот', 'построи', 'висока', 'кула.'], hint: 'Кой извършва действието? Сложи го на първо място!' },
+          { correct: ['Ние', 'обичаме', 'да', 'решаваме', 'интересни', 'задачи.'], hint: 'Започни с личното местоимение.' }
+        ],
+        engineer: [
+          { correct: ['Соларният', 'панел', 'превръща', 'слънчевата', 'светлина', 'в', 'ток.'], hint: 'Подлог + глагол + какво превръща + в какво.' },
+          { correct: ['Вчера', 'инженерът', 'поправи', 'повредения', 'сензор', 'на', 'дрона.'], hint: 'Започни с думата за време („Вчера“).' }
+        ],
+        excellent: [
+          { correct: ['Мартине,', 'провери', 'ли', 'най-важния', 'кабел', 'на', 'робота?'], hint: 'Започни с обръщението, отделено със запетая!' },
+          { correct: ['Истинният', 'конструктор', 'винаги', 'проверява', 'своите', 'изчисления.'], hint: 'Подлогът има двойно -нн-.' }
+        ],
+        super: [
+          { correct: ['„Готови', 'ли', 'сме', 'за', 'старт?“', '—', 'попита', 'капитанът.'], hint: 'Пряка реч в началото, тире и авторова реч в края.' },
+          { correct: ['Високата', 'скоростта', 'не', 'изплаши', 'смелия', 'пилот.'].map(w => w === 'скоростта' ? 'скорост' : w), hint: 'Започни с „Високата скорост...“' }
+        ]
+      }
+    };
+
+    // =========================================================================
+    // 3. СЪСТОЯНИЕ НА ПРИЛОЖЕНИЕТО И LOCALSTORAGE
+    // =========================================================================
+    const STORAGE_KEY = 'martin_bel_lab_v2';
+    // Вграден адрес към Google Apps Script (Web App)
+    const DEFAULT_DRIVE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx9v7PGvIXyY_RoFH-ftDxZ-b-p7i6UaOiKa2p8jp1dKEu3C3knaOFsfpMD_t9-K_k_/exec';
+
+    function getTodayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getDayIndex() {
+      const d = new Date();
+      return Math.floor(d.getTime() / (1000 * 60 * 60 * 24));
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {
+        xp: 0,
+        streak: 1,
+        lastActiveDate: getTodayStr(),
+        difficulty: 'engineer',
+        soundEnabled: true,
+        driveEndpoint: DEFAULT_DRIVE_ENDPOINT,
+        dailyProgress: {}
+      };
+    }
+
+    let appState = loadState();
+    // Автоматично попълване, ако в localStorage е останал празен адрес
+    if (!appState.driveEndpoint) {
+      appState.driveEndpoint = DEFAULT_DRIVE_ENDPOINT;
+      saveState();
+    }
+    const todayStr = getTodayStr();
+
+    // Обновяване на серията от дни (streak)
+    if (appState.lastActiveDate !== todayStr) {
+      const prev = new Date(appState.lastActiveDate);
+      const curr = new Date(todayStr);
+      const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        appState.streak = (appState.streak || 1) + 1;
+      } else if (diffDays > 1) {
+        appState.streak = 1;
+      }
+      appState.lastActiveDate = todayStr;
+    }
+
+    if (!appState.dailyProgress[todayStr]) {
+      appState.dailyProgress[todayStr] = {
+        completed: {}, // { m1: { difficulty, xp, time }, ... }
+        todayXp: 0
+      };
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {}
+    }
+
+    // Текущо работно състояние (в паметта)
+    let activeMission = 'm1';
+    let activeLabTab = 'wordBuilder'; // wordBuilder | debugger | sentenceBuilder
+    let readingFontSize = 18;
+
+    // Текущо съдържание за всяка мисия (може да се сменя с ИИ или от банката)
+    let sessionContent = {
+      m1: null,
+      m2: null,
+      m3: null,
+      m4: null,
+      m5: { wordBuilder: null, debugger: null, sentenceBuilder: null }
+    };
+
+    // Състояние за викторината (Мисия 4)
+    let quizState = { index: 0, score: 0, combo: 0, answered: false, finished: false };
+
+    // Състояние за конструкторската лаборатория (Мисия 5)
+    let labState = {
+      wbSelected: [],
+      wbSolved: false,
+      dbgSelectedIdx: null,
+      dbgSolved: false,
+      sbAvailable: [],
+      sbChosen: [],
+      sbSolved: false,
+      solvedTabs: { wordBuilder: false, debugger: false, sentenceBuilder: false }
+    };
+
+    // Състояние за аудио рекордери
+    let activeRecorders = {}; // { key: { mediaRecorder, chunks, timerInterval, seconds, audioUrl } }
+
+    // Състояние за диктовка
+    let dictationState = {
+      speed: 0.78,
+      parentMode: false,
+      paperMode: false,
+      showPaperKey: false,
+      userText: '',
+      checkedHtml: '',
+      scorePct: null
+    };
+
+    // Чеклист за Мисия 1
+    let m1Checks = [false, false, false];
+    // Отговори за Мисия 2
+    let m2OpenHints = {};
+    let m2CheckedQs = {};
+
+    // =========================================================================
+    // 4. ЗВУКОВИ ЕФЕКТИ (WEB AUDIO API)
+    // =========================================================================
+    let audioCtx = null;
+    function playTone(type) {
+      if (!appState.soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'correct') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'wrong') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(240, now);
+          osc.frequency.setValueAtTime(190, now + 0.1);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'complete') {
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'sine';
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.frequency.setValueAtTime(freq, now + i * 0.08);
+            g.gain.setValueAtTime(0.12, now + i * 0.08);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.28);
+            o.start(now + i * 0.08);
+            o.stop(now + i * 0.08 + 0.28);
+          });
+        } else if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(420, now);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        }
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      appState.soundEnabled = !appState.soundEnabled;
+      saveState();
+      updateSoundIcon();
+      if (appState.soundEnabled) playTone('click');
+    }
+
+    function updateSoundIcon() {
+      document.getElementById('soundOnIcon').classList.toggle('hidden', !appState.soundEnabled);
+      document.getElementById('soundOffIcon').classList.toggle('hidden', appState.soundEnabled);
+    }
+
+    // =========================================================================
+    // 5. TOAST ИЗВЕСТИЯ И НАГРАЖДАВАНЕ
+    // =========================================================================
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const colors = {
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        error: 'bg-rose-600 text-white border-rose-500',
+        info: 'bg-slate-800 text-white border-slate-700',
+        warning: 'bg-amber-500 text-slate-950 border-amber-400'
+      };
+      const el = document.createElement('div');
+      el.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl border text-sm font-semibold flex items-center gap-2 animate-fade-in ${colors[type] || colors.info}`;
+      el.innerHTML = `<span>${msg}</span>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.3s';
+        setTimeout(() => el.remove(), 300);
+      }, 3200);
+    }
+
+    function completeMission(missionId) {
+      const diff = DIFFICULTIES[appState.difficulty];
+      const todayRec = appState.dailyProgress[todayStr];
+      const alreadyDone = !!todayRec.completed[missionId];
+
+      const earnedXp = alreadyDone ? Math.round(diff.xp / 2) : diff.xp;
+      appState.xp += earnedXp;
+      todayRec.todayXp += earnedXp;
+
+      if (!alreadyDone) {
+        todayRec.completed[missionId] = {
+          difficulty: diff.name,
+          xp: earnedXp,
+          time: new Date().toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })
+        };
+      } else {
+        todayRec.completed[missionId].xp += earnedXp;
+        todayRec.completed[missionId].difficulty = diff.name;
+      }
+
+      saveState();
+      playTone('complete');
+      updateHUD();
+      renderMissionTabs();
+
+      if (!alreadyDone) {
+        showToast(`🎉 Мисията е завършена! Спечели +${earnedXp} XP (${diff.name})!`, 'success');
+      } else {
+        showToast(`🚀 Бонус тренировка! Спечели още +${earnedXp} XP!`, 'success');
+      }
+    }
+
+    // =========================================================================
+    // 6. GEMINI API ИНТЕГРАЦИЯ (С EXPONENTIAL BACKOFF И SAFE JSON PARSE)
+    // =========================================================================
+    async function callGeminiJSON(promptText) {
+      const apiKey = ""; // Автоматично се подава в средата
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        systemInstruction: {
+          parts: [{
+            text: "Ти си опитен български начален учител по БЕЛ за 4. клас и ментор по роботика. Винаги отговаряй САМО с валиден JSON на правилен, книжовен български език без никакви обяснения извън JSON."
+          }]
+        },
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      };
+
+      const delays = [1000, 2000, 4000];
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const result = await response.json();
+          const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!rawText) throw new Error('Empty response');
+
+          // Безопасно почистване на markdown блокове и парсване
+          const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+          return JSON.parse(cleaned);
+        } catch (err) {
+          if (attempt < delays.length) {
+            await new Promise(r => setTimeout(r, delays[attempt]));
+          } else {
+            return null;
+          }
+        }
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // 7. ЗАРЕЖДАНЕ НА ДНЕВНО СЪДЪРЖАНИЕ ОТ БАНКАТА
+    // =========================================================================
+    function pickFromBank(arr, offset = 0) {
+      const idx = (getDayIndex() + offset) % arr.length;
+      return JSON.parse(JSON.stringify(arr[idx]));
+    }
+
+    function loadDefaultContentForDifficulty(diffId, randomOffset = 0) {
+      sessionContent.m1 = pickFromBank(FALLBACK_READING_1[diffId], randomOffset);
+      sessionContent.m2 = pickFromBank(FALLBACK_READING_2[diffId], randomOffset);
+      sessionContent.m3 = pickFromBank(FALLBACK_DICTATIONS[diffId], randomOffset);
+      sessionContent.m4 = JSON.parse(JSON.stringify(FALLBACK_QUIZ[diffId]));
+      sessionContent.m5 = {
+        wordBuilder: pickFromBank(FALLBACK_CONSTRUCTOR.wordBuilder[diffId], randomOffset),
+        debugger: pickFromBank(FALLBACK_CONSTRUCTOR.debugger[diffId], randomOffset),
+        sentenceBuilder: pickFromBank(FALLBACK_CONSTRUCTOR.sentenceBuilder[diffId], randomOffset)
+      };
+
+      // Нулиране на интерактивните състояния за новата трудност
+      m1Checks = [false, false, false];
+      m2OpenHints = {};
+      m2CheckedQs = {};
+      dictationState.userText = '';
+      dictationState.checkedHtml = '';
+      dictationState.showPaperKey = false;
+      dictationState.scorePct = null;
+      quizState = { index: 0, score: 0, combo: 0, answered: false, finished: false };
+      initLabStates();
+    }
+
+    function initLabStates() {
+      const wb = sessionContent.m5.wordBuilder;
+      const sb = sessionContent.m5.sentenceBuilder;
+      // Разбъркани блокчета за Сглоби думата
+      const allParts = [...wb.parts, ...(wb.distractors || [])].map((p, i) => ({ ...p, uid: 'p' + i }));
+      allParts.sort(() => Math.random() - 0.5);
+
+      // Разбъркани думи за Сглоби изречението
+      const shuffledWords = sb.correct.map((w, i) => ({ text: w, uid: 'w' + i }));
+      shuffledWords.sort(() => Math.random() - 0.5);
+
+      labState = {
+        wbPool: allParts,
+        wbSelected: [],
+        wbSolved: false,
+        dbgSelectedIdx: null,
+        dbgSolved: false,
+        sbAvailable: shuffledWords,
+        sbChosen: [],
+        sbSolved: false,
+        solvedTabs: { wordBuilder: false, debugger: false, sentenceBuilder: false }
+      };
+    }
+
+    // =========================================================================
+    // 8. ОБНОВЯВАНЕ НА HUD, ТРУДНОСТ И ТАБОВЕ
+    // =========================================================================
+    function updateHUD() {
+      document.getElementById('xpValue').textContent = appState.xp;
+      document.getElementById('streakCount').textContent = appState.streak;
+
+      const completedCount = Object.keys(appState.dailyProgress[todayStr].completed).length;
+      document.getElementById('dailyCounter').textContent = `${completedCount}/5`;
+
+      // Изчисляване на ранг
+      let currentRank = RANKS[0];
+      let nextRank = RANKS[1];
+      for (let i = 0; i < RANKS.length; i++) {
+        if (appState.xp >= RANKS[i].minXp) {
+          currentRank = RANKS[i];
+          nextRank = RANKS[i + 1] || null;
+        }
+      }
+      document.getElementById('rankBadge').textContent = currentRank.title;
+
+      if (nextRank) {
+        const span = nextRank.minXp - currentRank.minXp;
+        const progress = appState.xp - currentRank.minXp;
+        const pct = Math.max(4, Math.min(100, Math.round((progress / span) * 100)));
+        document.getElementById('xpProgressBar').style.width = `${pct}%`;
+        document.getElementById('nextRankLabel').textContent = `До „${nextRank.title}“: ${nextRank.minXp - appState.xp} XP`;
+      } else {
+        document.getElementById('xpProgressBar').style.width = '100%';
+        document.getElementById('nextRankLabel').textContent = 'Максимален ранг достигнат! 🏆';
+      }
+    }
+
+    function renderDifficultySelector() {
+      const container = document.getElementById('difficultySelector');
+      const activeDiff = DIFFICULTIES[appState.difficulty];
+      document.getElementById('activeDiffHint').textContent = `Активно: ${activeDiff.name} (${activeDiff.badge})`;
+
+      container.innerHTML = Object.values(DIFFICULTIES).map(d => {
+        const isSelected = d.id === appState.difficulty;
+        return `
+          <button onclick="selectDifficulty('${d.id}')"
+            class="text-left p-3 rounded-2xl border-2 transition-all flex flex-col justify-between gap-1.5 ${
+              isSelected
+                ? d.activeBg + ' shadow-sm'
+                : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-white'
+            }">
+            <div class="flex items-center justify-between gap-1 w-full">
+              <span class="font-bold text-sm text-slate-900">${d.name}</span>
+              <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full ${d.pillBg}">${d.badge}</span>
+            </div>
+            <span class="text-xs text-slate-500">${d.sub}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectDifficulty(diffId) {
+      if (appState.difficulty === diffId) return;
+      appState.difficulty = diffId;
+      saveState();
+      playTone('click');
+      loadDefaultContentForDifficulty(diffId);
+      renderDifficultySelector();
+      renderActiveMission();
+      showToast(`Нивото е сменено на: ${DIFFICULTIES[diffId].name} (${DIFFICULTIES[diffId].badge})`, 'info');
+    }
+
+    function renderMissionTabs() {
+      const container = document.getElementById('missionTabs');
+      const completed = appState.dailyProgress[todayStr].completed;
+
+      container.innerHTML = MISSIONS_META.map(m => {
+        const isActive = m.id === activeMission;
+        const isDone = !!completed[m.id];
+        return `
+          <button onclick="switchMission('${m.id}')"
+            class="shrink-0 flex items-center gap-2.5 px-4 py-3 rounded-2xl border-2 transition-all text-left min-w-[165px] sm:flex-1 ${
+              isActive
+                ? 'bg-slate-900 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
+            }">
+            <span class="text-xl">${m.icon}</span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[10px] font-mono uppercase tracking-wider ${isActive ? 'text-cyan-400' : 'text-slate-400'}">Мисия ${m.num}</span>
+                ${isDone ? '<span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] font-bold">✓</span>' : ''}
+              </div>
+              <div class="font-bold text-xs sm:text-sm truncate">${m.title}</div>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function switchMission(missionId) {
+      stopAllSpeech();
+      activeMission = missionId;
+      playTone('click');
+      renderMissionTabs();
+      renderActiveMission();
+    }
+
+    function renderActiveMission() {
+      const ws = document.getElementById('missionWorkspace');
+      ws.classList.remove('animate-fade-in');
+      void ws.offsetWidth;
+      ws.classList.add('animate-fade-in');
+
+      if (activeMission === 'm1') renderMission1(ws);
+      else if (activeMission === 'm2') renderMission2(ws);
+      else if (activeMission === 'm3') renderMission3(ws);
+      else if (activeMission === 'm4') renderMission4(ws);
+      else if (activeMission === 'm5') renderMission5(ws);
+    }
+
+    // =========================================================================
+    // 9. МИСИЯ 1: ЧЕТЕНЕ И ЗАПИС (ТЕКСТ 1)
+    // =========================================================================
+    function renderMission1(container) {
+      const item = sessionContent.m1;
+      const diff = DIFFICULTIES[appState.difficulty];
+      const rec = activeRecorders['m1'] || {};
+      const isDone = !!appState.dailyProgress[todayStr].completed['m1'];
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Текст за четене -->
+          <div class="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 font-mono text-xs font-bold">${item.topic || 'Наука'}</span>
+                  <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${diff.pillBg}">${diff.name}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="changeFontSize(-2)" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold" title="По-малък шрифт">А-</button>
+                  <button onclick="changeFontSize(2)" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold" title="По-голям шрифт">А+</button>
+                  <button id="aiM1Btn" onclick="generateM1WithAI()" class="ml-1 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">
+                    ✨ Генерирай нов текст с ИИ
+                  </button>
+                </div>
+              </div>
+
+              <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 mb-3">${item.title}</h3>
+              <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 leading-relaxed text-slate-800" style="font-size: ${readingFontSize}px;">
+                ${item.text}
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>💡 Съвет: Прочети текста веднъж наум, преди да натиснеш „Запиши“.</span>
+              <button onclick="cycleBankM1()" class="text-indigo-600 hover:underline font-semibold">Друг текст от банката →</button>
+            </div>
+          </div>
+
+          <!-- Аудио студио и самооценка -->
+          <div class="space-y-5">
+            <!-- Рекордер -->
+            <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-lg border border-slate-700">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-mono uppercase tracking-wider text-cyan-400">🎙️ Аудио рекордер</span>
+                <span id="m1Timer" class="font-mono text-sm font-bold text-slate-300">${formatTime(rec.seconds || 0)}</span>
+              </div>
+
+              <div class="flex items-center gap-2.5">
+                ${!rec.isRecording ? `
+                  <button onclick="startRecording('m1')" class="flex-1 py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 transition">
+                    <span class="w-3 h-3 rounded-full bg-white"></span>
+                    Запиши четенето
+                  </button>
+                ` : `
+                  <button onclick="stopRecording('m1')" class="flex-1 py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition">
+                    <span class="w-3 h-3 rounded-full bg-rose-600 rec-pulse"></span>
+                    Спри записа
+                  </button>
+                `}
+              </div>
+
+              ${rec.audioUrl ? `
+                <div class="mt-4 pt-4 border-t border-slate-800 space-y-2.5">
+                  <div class="text-xs text-emerald-400 font-semibold">✓ Записът е готов! Прослушай го:</div>
+                  <audio controls src="${rec.audioUrl}" class="w-full h-10 rounded-xl"></audio>
+                  <a href="${rec.audioUrl}" download="martin-chetene-${todayStr}.webm"
+                    class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 text-xs font-semibold flex items-center justify-center gap-2 transition">
+                    ⬇️ Изтегли записа (за учителя)
+                  </a>
+                </div>
+              ` : `
+                <p class="text-xs text-slate-400 mt-3">Натисни бутона и прочети текста на глас. После можеш да чуеш как звучиш!</p>
+              `}
+            </div>
+
+            <!-- Чеклист за самооценка -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5">
+              <h4 class="font-bold text-sm text-slate-800 mb-3">✅ Чеклист на инженера</h4>
+              <div class="space-y-2.5">
+                ${['Четох ясно и отчетливо', 'Спазих препинателните знаци', 'Не прескачах думи и срички'].map((label, idx) => `
+                  <label class="flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition ${m1Checks[idx] ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}">
+                    <input type="checkbox" ${m1Checks[idx] ? 'checked' : ''} onchange="toggleM1Check(${idx})" class="w-4 h-4 rounded accent-emerald-600">
+                    <span class="text-sm font-medium text-slate-700">${label}</span>
+                  </label>
+                `).join('')}
+              </div>
+
+              <button onclick="completeMission('m1')" class="mt-4 w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md transition">
+                ${isDone ? 'Завърши отново (Бонус XP)' : `Завърши мисията (${diff.badge})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function changeFontSize(delta) {
+      readingFontSize = Math.max(14, Math.min(28, readingFontSize + delta));
+      renderActiveMission();
+    }
+
+    function toggleM1Check(idx) {
+      m1Checks[idx] = !m1Checks[idx];
+      playTone('click');
+      renderActiveMission();
+    }
+
+    let m1BankOffset = 0;
+    function cycleBankM1() {
+      m1BankOffset++;
+      sessionContent.m1 = pickFromBank(FALLBACK_READING_1[appState.difficulty], m1BankOffset);
+      playTone('click');
+      renderActiveMission();
+    }
+
+    async function generateM1WithAI() {
+      const btn = document.getElementById('aiM1Btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Генериране...'; }
+      const diff = DIFFICULTIES[appState.difficulty];
+      const prompt = `Създай кратък, увлекателен текст за четене на глас за момче в 4. клас (тема: роботи, изобретения, космос, технологии или приключения). Ниво на трудност: ${diff.promptDesc}. Дължина: 4 до 6 изречения. Върни JSON с полета: {"title": "заглавие", "topic": "една дума тема", "text": "текстът"}.`;
+
+      const res = await callGeminiJSON(prompt);
+      if (res && res.title && res.text) {
+        sessionContent.m1 = res;
+        showToast('✨ Новият текст от ИИ е готов!', 'success');
+      } else {
+        cycleBankM1();
+        showToast('Зареден е нов текст от вградената библиотека.', 'info');
+      }
+      renderActiveMission();
+    }
+
+    // =========================================================================
+    // 10. МИСИЯ 2: УСТНИ ВЪПРОСИ (ТЕКСТ 2)
+    // =========================================================================
+    function renderMission2(container) {
+      const item = sessionContent.m2;
+      const diff = DIFFICULTIES[appState.difficulty];
+      const isDone = !!appState.dailyProgress[todayStr].completed['m2'];
+
+      container.innerHTML = `
+        <div class="space-y-5">
+          <!-- Текст 2 -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg bg-cyan-100 text-cyan-800 font-mono text-xs font-bold">ТЕКСТ 2 // РАЗБИРАНЕ</span>
+                <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${diff.pillBg}">${diff.name}</span>
+              </div>
+              <button id="aiM2Btn" onclick="generateM2WithAI()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">
+                ✨ Нов текст и въпроси с ИИ
+              </button>
+            </div>
+            <h3 class="text-xl font-extrabold text-slate-900 mb-2">${item.title}</h3>
+            <p class="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-base sm:text-lg leading-relaxed text-slate-800">
+              ${item.text}
+            </p>
+          </div>
+
+          <!-- Общ аудио рекордер за устните отговори към мис -->
+          ${(() => {
+            const mainRec = activeRecorders['m2_oral'] || {};
+            return `
+              <div class="bg-slate-900 text-white rounded-3xl p-4 sm:p-5 border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div class="text-xs font-mono uppercase text-cyan-400 font-bold">🎙️ Общ запис на устните отговори (за „Изпрати на мис“)</div>
+                  <p class="text-xs text-slate-300 mt-0.5">Натисни „Запиши“, отговори на глас на въпросите по-долу и спри записа.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  ${!mainRec.isRecording ? `
+                    <button onclick="startRecording('m2_oral')" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-2 transition">
+                      <span class="w-2.5 h-2.5 rounded-full bg-white"></span>
+                      Запиши устните отговори
+                    </button>
+                  ` : `
+                    <button onclick="stopRecording('m2_oral')" class="px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold flex items-center gap-2">
+                      <span class="w-2.5 h-2.5 rounded-full bg-rose-600 rec-pulse"></span>
+                      Спри (${formatTime(mainRec.seconds || 0)})
+                    </button>
+                  `}
+                  ${mainRec.audioUrl ? `
+                    <audio controls src="${mainRec.audioUrl}" class="h-9 max-w-[210px]"></audio>
+                    <a href="${mainRec.audioUrl}" download="martin-ustni-${todayStr}.webm" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold">⬇️</a>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          })()}
+
+          <!-- Устни въпроси -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${item.questions.map((qObj, idx) => {
+              const recKey = `m2_q${idx}`;
+              const rec = activeRecorders[recKey] || {};
+              const hintOpen = !!m2OpenHints[idx];
+              const isChecked = !!m2CheckedQs[idx];
+
+              return `
+                <div class="bg-white rounded-3xl shadow-sm border-2 transition p-5 flex flex-col justify-between gap-4 ${isChecked ? 'border-emerald-400 bg-emerald-50/20' : 'border-slate-200'}">
+                  <div>
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                      <span class="font-mono text-xs font-bold text-indigo-600">ВЪПРОС #${idx + 1}</span>
+                      <button onclick="toggleM2Checked(${idx})" class="text-xs font-semibold px-2.5 py-1 rounded-lg transition ${isChecked ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                        ${isChecked ? '✓ Отговорено' : 'Отбележи готов'}
+                      </button>
+                    </div>
+                    <p class="font-bold text-slate-900 text-base">${qObj.q}</p>
+                  </div>
+
+                  <!-- Мини рекордер за устен отговор -->
+                  <div class="space-y-2.5">
+                    <div class="flex flex-wrap items-center gap-2">
+                      ${!rec.isRecording ? `
+                        <button onclick="startRecording('${recKey}')" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition">
+                          <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                          Запиши устен отговор
+                        </button>
+                      ` : `
+                        <button onclick="stopRecording('${recKey}')" class="px-3 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold flex items-center gap-1.5">
+                          <span class="w-2.5 h-2.5 rounded-full bg-rose-600 rec-pulse"></span>
+                          Спри (${formatTime(rec.seconds || 0)})
+                        </button>
+                      `}
+
+                      <button onclick="toggleM2Hint(${idx})" class="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition">
+                        ${hintOpen ? 'Скрий отговора' : '💡 Примерен отговор'}
+                      </button>
+                    </div>
+
+                    ${rec.audioUrl ? `<audio controls src="${rec.audioUrl}" class="w-full h-9"></audio>` : ''}
+
+                    ${hintOpen ? `
+                      <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs sm:text-sm text-amber-950 animate-fade-in">
+                        <strong>Примерен отговор:</strong> ${qObj.hint}
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="flex justify-end">
+            <button onclick="completeMission('m2')" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md transition">
+              ${isDone ? 'Завърши отново (Бонус XP)' : `Завърши мисията (${diff.badge})`}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleM2Hint(idx) {
+      m2OpenHints[idx] = !m2OpenHints[idx];
+      playTone('click');
+      renderActiveMission();
+    }
+
+    function toggleM2Checked(idx) {
+      m2CheckedQs[idx] = !m2CheckedQs[idx];
+      playTone(m2CheckedQs[idx] ? 'correct' : 'click');
+      renderActiveMission();
+    }
+
+    async function generateM2WithAI() {
+      const btn = document.getElementById('aiM2Btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Генериране...'; }
+      const diff = DIFFICULTIES[appState.difficulty];
+      const prompt = `Създай кратък интересен текст за четене с разбиране за 4. клас (различен от обичайни теми — напр. интересни факти за изобретения, животни, космос или инженерство) и 3 или 4 устни въпроса към него с кратки примерни отговори. Ниво: ${diff.promptDesc}. Върни JSON: {"title": "заглавие", "text": "текст от 4-5 изречения", "questions": [{"q": "въпрос", "hint": "примерен отговор"}]}.`;
+
+      const res = await callGeminiJSON(prompt);
+      if (res && res.title && res.text && Array.isArray(res.questions) && res.questions.length > 0) {
+        sessionContent.m2 = res;
+        m2OpenHints = {};
+        m2CheckedQs = {};
+        showToast('✨ Новият текст и въпроси са готови!', 'success');
+      } else {
+        showToast('Използва се текстът от вградената банка.', 'info');
+      }
+      renderActiveMission();
+    }
+
+    // =========================================================================
+    // 11. ОБЩ АУДИО РЕКОРДЕР (MEDIARECORDER API)
+    // =========================================================================
+    function formatTime(sec) {
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    async function startRecording(key) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Браузърът не поддържа запис на звук или няма микрофон.', 'warning');
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        const chunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const mimeType = mediaRecorder.mimeType || 'audio/webm';
+          const blob = new Blob(chunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          stream.getTracks().forEach(t => t.stop());
+          if (activeRecorders[key]) {
+            clearInterval(activeRecorders[key].timerInterval);
+            activeRecorders[key].isRecording = false;
+            activeRecorders[key].audioUrl = url;
+            activeRecorders[key].blob = blob;
+            activeRecorders[key].mimeType = mimeType;
+          }
+          renderActiveMission();
+          showToast('🎙️ Записът е запазен и готов за „Изпрати на мис“!', 'success');
+        };
+
+        mediaRecorder.start();
+        activeRecorders[key] = {
+          mediaRecorder,
+          isRecording: true,
+          seconds: 0,
+          audioUrl: null,
+          timerInterval: setInterval(() => {
+            if (activeRecorders[key]) {
+              activeRecorders[key].seconds++;
+              const timerEl = document.getElementById('m1Timer');
+              if (key === 'm1' && timerEl) timerEl.textContent = formatTime(activeRecorders[key].seconds);
+            }
+          }, 1000)
+        };
+        renderActiveMission();
+      } catch (err) {
+        showToast('Няма достъп до микрофона. Разреши микрофона в браузъра.', 'error');
+      }
+    }
+
+    function stopRecording(key) {
+      const rec = activeRecorders[key];
+      if (rec && rec.mediaRecorder && rec.isRecording) {
+        rec.mediaRecorder.stop();
+      }
+    }
+
+    // =========================================================================
+    // 12. МИСИЯ 3: ДИКТОВКА (WEB SPEECH API + ПРОВЕРКА ДУМА ПО ДУМА)
+    // =========================================================================
+    function renderMission3(container) {
+      const item = sessionContent.m3;
+      const diff = DIFFICULTIES[appState.difficulty];
+      const isDone = !!appState.dailyProgress[todayStr].completed['m3'];
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Контролен пулт за диктовка -->
+          <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-lg border border-slate-700 space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono uppercase tracking-wider text-cyan-400">🔊 Аудио пулт</span>
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${diff.pillBg}">${diff.name}</span>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-xs text-slate-300">
+              <span class="text-amber-300 font-bold">Фокус на диктовката:</span> ${item.ruleFocus}
+            </div>
+
+            <!-- Скорост на четене -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400">Скорост:</span>
+              <button onclick="setDictationSpeed(0.72)" class="flex-1 py-1.5 rounded-xl text-xs font-bold border transition ${dictationState.speed < 0.85 ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-800 text-slate-300 border-slate-700'}">🐢 Бавно</button>
+              <button onclick="setDictationSpeed(0.95)" class="flex-1 py-1.5 rounded-xl text-xs font-bold border transition ${dictationState.speed >= 0.85 ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-800 text-slate-300 border-slate-700'}">⚡ Нормално</button>
+            </div>
+
+            <!-- Основни бутони за четене -->
+            <div class="flex gap-2">
+              <button onclick="speakFullDictation()" class="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+                ▶️ Прочети цялата
+              </button>
+              <button onclick="stopAllSpeech()" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition">
+                ⏹️ Спри
+              </button>
+            </div>
+
+            <!-- Изречение по изречение -->
+            <div class="space-y-1.5">
+              <div class="text-[11px] font-mono text-slate-400 uppercase">Пусни поотделно:</div>
+              <div class="grid grid-cols-2 gap-1.5">
+                ${item.sentences.map((_, i) => `
+                  <button onclick="speakSentence(${i})" class="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-left flex items-center gap-1.5 transition">
+                    <span class="text-cyan-400">🔊</span> Изречение ${i + 1}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Режим за родител + AI бутон -->
+            <div class="pt-3 border-t border-slate-800 space-y-2">
+              <label class="flex items-center justify-between cursor-pointer text-xs text-slate-300">
+                <span>👨‍👩‍👦 Режим за родител (покажи текста)</span>
+                <input type="checkbox" ${dictationState.parentMode ? 'checked' : ''} onchange="toggleParentMode()" class="w-4 h-4 accent-cyan-400">
+              </label>
+
+              ${dictationState.parentMode ? `
+                <div class="p-3 rounded-xl bg-slate-800 border border-cyan-500/40 text-xs text-cyan-100 space-y-1.5 leading-relaxed">
+                  ${item.sentences.map((s, i) => `<div><span class="text-cyan-400 font-mono">${i + 1}.</span> ${s}</div>`).join('')}
+                </div>
+              ` : ''}
+
+              <button id="aiM3Btn" onclick="generateM3WithAI()" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-indigo-500/40 text-indigo-300 text-xs font-semibold transition">
+                ✨ Генерирай нова диктовка с ИИ
+              </button>
+            </div>
+          </div>
+
+          <!-- Поле за писане и проверка -->
+          <div class="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col justify-between space-y-4">
+            <div class="space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="text-lg font-extrabold text-slate-900">✍️ Изпълнение на диктовката</h3>
+                <div class="inline-flex rounded-xl bg-slate-100 p-1">
+                  <button onclick="setDictationPaperMode(false)" class="px-3 py-1 rounded-lg text-xs font-bold transition ${!dictationState.paperMode ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600'}">💻 На клавиатура</button>
+                  <button onclick="setDictationPaperMode(true)" class="px-3 py-1 rounded-lg text-xs font-bold transition ${dictationState.paperMode ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600'}">📝 На хартия</button>
+                </div>
+              </div>
+
+              ${!dictationState.paperMode ? `
+                <div>
+                  <textarea id="dictationInput" rows="6" oninput="dictationState.userText = this.value"
+                    placeholder="Слушай внимателно изреченията и ги напиши тук. Не забравяй главните букви и препинателните знаци!"
+                    class="w-full p-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:outline-none text-base leading-relaxed resize-none">${dictationState.userText}</textarea>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button onclick="checkDictation()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">
+                      🔍 Провери диктовката
+                    </button>
+                    <button onclick="dictationState.userText=''; dictationState.checkedHtml=''; renderActiveMission();" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition">
+                      Изчисти
+                    </button>
+                  </div>
+                </div>
+
+                ${dictationState.checkedHtml ? `
+                  <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 animate-fade-in">
+                    <div class="text-xs font-bold text-slate-500 uppercase">Резултат от проверката (зелено = вярно, червено = грешка):</div>
+                    <div class="text-base leading-loose">${dictationState.checkedHtml}</div>
+                  </div>
+                ` : ''}
+              ` : `
+                <div class="p-5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                  <p class="text-sm text-amber-950 font-medium">
+                    Вземи тетрадката и химикала! Слушай изреченията от аудио пулта вляво и ги записвай красиво на хартия. Когато си готов, натисни бутона долу, за да провериш сам написаното.
+                  </p>
+                  <button onclick="dictationState.showPaperKey = !dictationState.showPaperKey; renderActiveMission();"
+                    class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm transition">
+                    ${dictationState.showPaperKey ? 'Скрий текста' : '👁️ Покажи текста за проверка'}
+                  </button>
+
+                  ${dictationState.showPaperKey ? `
+                    <div class="p-4 rounded-xl bg-white border border-amber-300 space-y-2 text-base text-slate-800 animate-fade-in">
+                      ${item.sentences.map((s, i) => `<div><span class="font-mono text-xs text-indigo-500 mr-1">${i + 1}.</span> ${s}</div>`).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              `}
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex justify-end">
+              <button onclick="completeMission('m3')" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md transition">
+                ${isDone ? 'Завърши отново (Бонус XP)' : `Завърши мисията (${diff.badge})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function setDictationSpeed(spd) {
+      dictationState.speed = spd;
+      playTone('click');
+      renderActiveMission();
+    }
+
+    function toggleParentMode() {
+      dictationState.parentMode = !dictationState.parentMode;
+      renderActiveMission();
+    }
+
+    function setDictationPaperMode(isPaper) {
+      dictationState.paperMode = isPaper;
+      playTone('click');
+      renderActiveMission();
+    }
+
+    function stopAllSpeech() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function speakTextBg(text) {
+      if (!('speechSynthesis' in window)) {
+        showToast('Устройството не поддържа гласово четене. Включи „Режим за родител“.', 'warning');
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'bg-BG';
+      utter.rate = dictationState.speed;
+
+      const voices = window.speechSynthesis.getVoices();
+      const bgVoice = voices.find(v => v.lang.toLowerCase().startsWith('bg'));
+      if (bgVoice) utter.voice = bgVoice;
+
+      window.speechSynthesis.speak(utter);
+    }
+
+    function speakSentence(idx) {
+      const s = sessionContent.m3.sentences[idx];
+      if (s) speakTextBg(s);
+    }
+
+    function speakFullDictation() {
+      const full = sessionContent.m3.sentences.join(' ... ');
+      speakTextBg(full);
+    }
+
+    function checkDictation() {
+      const targetWords = sessionContent.m3.sentences.join(' ').trim().split(/\s+/);
+      const userWords = dictationState.userText.trim().split(/\s+/).filter(Boolean);
+
+      if (userWords.length === 0) {
+        showToast('Първо напиши диктовката в полето!', 'warning');
+        return;
+      }
+
+      let correctCount = 0;
+      const htmlParts = targetWords.map((tWord, i) => {
+        const uWord = userWords[i] || '';
+        if (uWord === tWord) {
+          correctCount++;
+          return `<span class="inline-block px-1.5 py-0.5 mx-0.5 my-0.5 rounded-lg bg-emerald-100 text-emerald-800 font-semibold">${uWord}</span>`;
+        } else if (uWord.toLowerCase() === tWord.toLowerCase()) {
+          return `<span class="inline-block px-1.5 py-0.5 mx-0.5 my-0.5 rounded-lg bg-amber-100 text-amber-900 font-semibold" title="Главна/малка буква">${uWord} <span class="text-[11px] text-emerald-700">(${tWord})</span></span>`;
+        } else {
+          return `<span class="inline-block px-1.5 py-0.5 mx-0.5 my-0.5 rounded-lg bg-rose-100 text-rose-800 font-semibold">${uWord ? `<s class="opacity-70">${uWord}</s> ` : ''}<span class="text-emerald-700 underline">${tWord}</span></span>`;
+        }
+      });
+
+      const pct = Math.round((correctCount / targetWords.length) * 100);
+      dictationState.scorePct = pct;
+      dictationState.checkedHtml = `
+        <div class="mb-2 text-sm font-bold ${pct >= 80 ? 'text-emerald-700' : 'text-indigo-700'}">
+          Точност: ${pct}% (${correctCount} от ${targetWords.length} думи без грешка)
+        </div>
+        <div>${htmlParts.join(' ')}</div>
+      `;
+      playTone(pct >= 75 ? 'correct' : 'click');
+      renderActiveMission();
+    }
+
+    async function generateM3WithAI() {
+      const btn = document.getElementById('aiM3Btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Генериране...'; }
+      const diff = DIFFICULTIES[appState.difficulty];
+      const prompt = `Създай кратка диктовка от 3 до 5 изречения по БЕЛ за 4. клас. Ниво: ${diff.promptDesc}. Включи ясни правила от програмата за 4. клас (напр. членуване, двойно -нн-, степенуване, звучни/беззвучни съгласни или пряка реч). Върни JSON: {"ruleFocus": "кратко име на правилата", "sentences": ["изречение 1", "изречение 2", "изречение 3"]}.`;
+
+      const res = await callGeminiJSON(prompt);
+      if (res && Array.isArray(res.sentences) && res.sentences.length >= 3) {
+        sessionContent.m3 = res;
+        dictationState.userText = '';
+        dictationState.checkedHtml = '';
+        dictationState.scorePct = null;
+        showToast('✨ Новата диктовка от ИИ е готова!', 'success');
+      } else {
+        showToast('Използва се диктовката от вградената банка.', 'info');
+      }
+      renderActiveMission();
+    }
+
+    // =========================================================================
+    // 13. МИСИЯ 4: ПРАВИЛА В ИГРА (УП ПО БЕЛ ЗА 4. КЛАС)
+    // =========================================================================
+    function renderMission4(container) {
+      const questions = sessionContent.m4;
+      const diff = DIFFICULTIES[appState.difficulty];
+      const isDone = !!appState.dailyProgress[todayStr].completed['m4'];
+
+      if (quizState.finished) {
+        const pct = Math.round((quizState.score / questions.length) * 100);
+        container.innerHTML = `
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 text-center max-w-2xl mx-auto space-y-5">
+            <div class="text-5xl">${pct >= 80 ? '🏆' : '⚡'}</div>
+            <h3 class="text-2xl font-extrabold text-slate-900">Серията приключи!</h3>
+            <p class="text-slate-600">Верни отговори: <strong class="text-indigo-600 font-mono text-lg">${quizState.score} / ${questions.length}</strong> (${pct}%)</p>
+            <div class="flex flex-wrap justify-center gap-3 pt-2">
+              <button onclick="completeMission('m4')" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md">
+                ${isDone ? 'Вземи Бонус XP' : `Вземи наградата (${diff.badge})`}
+              </button>
+              <button onclick="restartQuiz()" class="px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm">
+                🔄 Повтори серията
+              </button>
+              <button id="aiM4Btn" onclick="generateM4WithAI()" class="px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-sm">
+                ✨ Нова серия с ИИ
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const q = questions[quizState.index];
+
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-4">
+          <!-- Горен бар на играта -->
+          <div class="flex flex-wrap items-center justify-between gap-2 bg-white rounded-2xl px-4 py-3 border border-slate-200">
+            <div class="flex items-center gap-3">
+              <span class="font-mono text-xs font-bold text-slate-500">ВЪПРОС ${quizState.index + 1} / ${questions.length}</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${diff.pillBg}">${diff.name}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-mono font-bold text-orange-500">🔥 Combo: ${quizState.combo}</span>
+              <button id="aiM4Btn" onclick="generateM4WithAI()" class="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition">
+                ✨ Нова серия с ИИ
+              </button>
+            </div>
+          </div>
+
+          <!-- Карта „Код на правилото“ -->
+          <div class="bg-slate-900 text-white rounded-3xl p-5 border border-indigo-500/40 shadow-md">
+            <div class="flex items-center gap-2 text-cyan-400 font-mono text-xs uppercase font-bold mb-1.5">
+              <span>📘 КОД НА ПРАВИЛОТО:</span>
+              <span class="text-amber-300">${q.topic}</span>
+            </div>
+            <p class="text-sm sm:text-base text-slate-200 leading-relaxed">${q.rule}</p>
+          </div>
+
+          <!-- Въпрос и опции -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-4">
+            <h3 class="text-lg sm:text-xl font-extrabold text-slate-900">${q.question}</h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              ${q.options.map((opt, idx) => {
+                let cls = 'bg-slate-50 hover:bg-indigo-50 border-slate-200 hover:border-indigo-400 text-slate-800';
+                if (quizState.answered) {
+                  if (idx === q.correct) cls = 'bg-emerald-100 border-emerald-500 text-emerald-950 font-bold';
+                  else if (idx === quizState.selectedIdx) cls = 'bg-rose-100 border-rose-500 text-rose-950';
+                  else cls = 'bg-slate-50 border-slate-200 text-slate-400 opacity-70';
+                }
+                return `
+                  <button ${quizState.answered ? 'disabled' : ''} onclick="answerQuiz(${idx})"
+                    class="p-4 rounded-2xl border-2 text-left font-semibold text-sm sm:text-base transition ${cls}">
+                    <span class="font-mono text-xs mr-2 opacity-60">${String.fromCharCode(65 + idx)})</span>
+                    ${opt}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+
+            ${quizState.answered ? `
+              <div class="p-4 rounded-2xl border animate-fade-in ${quizState.selectedIdx === q.correct ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-950'}">
+                <div class="font-bold text-sm mb-1">
+                  ${quizState.selectedIdx === q.correct ? '✅ Точно попадение! Отлично мислене!' : '🔧 Малка корекция:'}
+                </div>
+                <p class="text-sm">${q.explanation}</p>
+                <button onclick="nextQuizQuestion()" class="mt-3 px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition">
+                  ${quizState.index + 1 < questions.length ? 'Следващ въпрос →' : 'Виж резултата →'}
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function answerQuiz(idx) {
+      if (quizState.answered) return;
+      const q = sessionContent.m4[quizState.index];
+      quizState.answered = true;
+      quizState.selectedIdx = idx;
+      if (idx === q.correct) {
+        quizState.score++;
+        quizState.combo++;
+        playTone('correct');
+      } else {
+        quizState.combo = 0;
+        playTone('wrong');
+      }
+      renderActiveMission();
+    }
+
+    function nextQuizQuestion() {
+      if (quizState.index + 1 < sessionContent.m4.length) {
+        quizState.index++;
+        quizState.answered = false;
+        quizState.selectedIdx = null;
+      } else {
+        quizState.finished = true;
+        playTone('complete');
+      }
+      renderActiveMission();
+    }
+
+    function restartQuiz() {
+      quizState = { index: 0, score: 0, combo: 0, answered: false, finished: false };
+      renderActiveMission();
+    }
+
+    async function generateM4WithAI() {
+      const btn = document.getElementById('aiM4Btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Генериране...'; }
+      const diff = DIFFICULTIES[appState.difficulty];
+      const prompt = `Създай 5 игрови въпроса по учебната програма по БЕЛ за 4. клас (членуване м.р./ж.р./ср.р., прилагателни с по-/най- и двойно -нн-, глаголи и времена, правопис на звучни/беззвучни съгласни, пряка реч/обръщение, числителни/местоимения). Ниво: ${diff.promptDesc}. Върни JSON масив от 5 обекта: [{"topic": "тема", "rule": "2 реда ясно правило", "question": "въпрос", "options": ["опция1", "опция2", "опция3", "опция4"], "correct": 0, "explanation": "кратко обяснение"}].`;
+
+      const res = await callGeminiJSON(prompt);
+      if (Array.isArray(res) && res.length >= 3 && res[0].options) {
+        sessionContent.m4 = res;
+        restartQuiz();
+        showToast('✨ Новата викторина от ИИ е готова!', 'success');
+      } else {
+        showToast('Използва се вградената банка с въпроси.', 'info');
+        renderActiveMission();
+      }
+    }
+
+    // =========================================================================
+    // 14. МИСИЯ 5: КОНСТРУКТОРСКА ЛАБОРАТОРИЯ (3 ИНЖЕНЕРНИ МИНИ-ИГРИ)
+    // =========================================================================
+    function renderMission5(container) {
+      const diff = DIFFICULTIES[appState.difficulty];
+      const isDone = !!appState.dailyProgress[todayStr].completed['m5'];
+      const solvedCount = Object.values(labState.solvedTabs).filter(Boolean).length;
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          <!-- Под-навигация на 3-те инженерни мини-игри -->
+          <div class="bg-white rounded-2xl p-3 border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap gap-2">
+              <button onclick="switchLabTab('wordBuilder')" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition ${activeLabTab === 'wordBuilder' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+                🧩 Сглоби думата ${labState.solvedTabs.wordBuilder ? '✓' : ''}
+              </button>
+              <button onclick="switchLabTab('debugger')" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition ${activeLabTab === 'debugger' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+                🐞 Открий бъга (Debugger) ${labState.solvedTabs.debugger ? '✓' : ''}
+              </button>
+              <button onclick="switchLabTab('sentenceBuilder')" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition ${activeLabTab === 'sentenceBuilder' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+                ⚙️ Сглоби изречението ${labState.solvedTabs.sentenceBuilder ? '✓' : ''}
+              </button>
+            </div>
+
+            <button id="aiM5Btn" onclick="generateM5WithAI()" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-400 text-xs font-bold transition">
+              ✨ Нови задачи с ИИ
+            </button>
+          </div>
+
+          <!-- Работна зона на активната мини-игра -->
+          <div id="labSubWorkspace">
+            ${activeLabTab === 'wordBuilder' ? renderWordBuilderHTML() : ''}
+            ${activeLabTab === 'debugger' ? renderDebuggerHTML() : ''}
+            ${activeLabTab === 'sentenceBuilder' ? renderSentenceBuilderHTML() : ''}
+          </div>
+
+          <!-- Бутон за завършване на Мисия 5 -->
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div class="text-sm text-slate-600">
+              Решени инженерни модули в тази сесия: <strong class="font-mono text-indigo-600">${solvedCount}/3</strong>
+            </div>
+            <button onclick="completeMission('m5')" class="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md transition">
+              ${isDone ? 'Завърши отново (Бонус XP)' : `Завърши лабораторията (${diff.badge})`}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function switchLabTab(tab) {
+      activeLabTab = tab;
+      playTone('click');
+      renderActiveMission();
+    }
+
+    // --- ТАБ А: СГЛОБИ ДУМАТА (ЧЕРТЕЖ) ---
+    function getPartColor(type) {
+      if (type === 'prefix') return 'bg-blue-100 text-blue-800 border-blue-300';
+      if (type === 'root') return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      return 'bg-purple-100 text-purple-800 border-purple-300';
+    }
+
+    function renderWordBuilderHTML() {
+      const wb = sessionContent.m5.wordBuilder;
+      const assembled = labState.wbSelected.map(p => p.text).join('');
+      const targetWord = wb.parts.map(p => p.text).join('');
+
+      return `
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span class="font-mono text-xs font-bold text-indigo-600 uppercase">ЧЕРТЕЖ НА ДУМА</span>
+              <h3 class="text-lg sm:text-xl font-extrabold text-slate-900 mt-0.5">Сглоби думата: „${wb.clue}“</h3>
+            </div>
+            <div class="flex gap-2 text-[11px] font-bold">
+              <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800">Представка</span>
+              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Корен</span>
+              <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800">Наставка/Оконч.</span>
+            </div>
+          </div>
+
+          <!-- Зона за сглобяване (Слотове) -->
+          <div class="p-5 rounded-2xl bg-slate-900 border-2 border-dashed border-cyan-500/50 min-h-[88px] flex flex-wrap items-center justify-center gap-2">
+            ${labState.wbSelected.length === 0 ? `
+              <span class="text-slate-400 font-mono text-sm">Кликни върху блокчетата долу, за да сглобиш думата тук...</span>
+            ` : labState.wbSelected.map((p, i) => `
+              <button onclick="removeWbPart(${i})" class="px-4 py-2.5 rounded-xl border-2 font-mono font-bold text-base shadow-sm hover:opacity-80 transition ${getPartColor(p.type)}">
+                ${p.text}
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Резултат -->
+          ${labState.wbSelected.length > 0 ? `
+            <div class="text-center font-mono text-lg font-bold text-slate-700">
+              Сглобена дума: <span class="text-indigo-600">${assembled}</span>
+            </div>
+          ` : ''}
+
+          <!-- Налични блокчета -->
+          <div class="flex flex-wrap justify-center gap-2.5">
+            ${labState.wbPool.map(p => {
+              const isUsed = labState.wbSelected.some(s => s.uid === p.uid);
+              return `
+                <button ${isUsed ? 'disabled' : ''} onclick="addWbPart('${p.uid}')"
+                  class="px-4 py-2.5 rounded-xl border-2 font-mono font-bold text-base transition ${
+                    isUsed ? 'opacity-30 cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400' : getPartColor(p.type) + ' hover:scale-105 cursor-pointer shadow-sm'
+                  }">
+                  ${p.text}
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Бутони -->
+          <div class="flex flex-wrap justify-center gap-3 pt-2">
+            <button onclick="checkWordBuilder()" class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">
+              ⚡ Тествай чертежа
+            </button>
+            <button onclick="labState.wbSelected=[]; labState.wbSolved=false; renderActiveMission();" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition">
+              Изчисти
+            </button>
+          </div>
+
+          ${labState.wbSolved ? `
+            <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-center font-bold animate-fade-in">
+              ✅ Перфектен чертеж! Думата „${targetWord}“ е сглобена без грешка!
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function addWbPart(uid) {
+      const part = labState.wbPool.find(p => p.uid === uid);
+      if (part) {
+        labState.wbSelected.push(part);
+        playTone('click');
+        renderActiveMission();
+      }
+    }
+
+    function removeWbPart(idx) {
+      labState.wbSelected.splice(idx, 1);
+      labState.wbSolved = false;
+      playTone('click');
+      renderActiveMission();
+    }
+
+    function checkWordBuilder() {
+      const wb = sessionContent.m5.wordBuilder;
+      const assembled = labState.wbSelected.map(p => p.text).join('');
+      const target = wb.parts.map(p => p.text).join('');
+      if (assembled === target) {
+        labState.wbSolved = true;
+        labState.solvedTabs.wordBuilder = true;
+        playTone('correct');
+        showToast('🧩 Браво! Думата е сглобена правилно!', 'success');
+      } else {
+        playTone('wrong');
+        showToast('Опитай пак! Провери реда на блокчетата.', 'warning');
+      }
+      renderActiveMission();
+    }
+
+    // --- ТАБ Б: ОТКРИЙ БЪГА В КОДА (DEBUGGER) ---
+    function renderDebuggerHTML() {
+      const dbg = sessionContent.m5.debugger;
+      const displayWords = dbg.words.map((w, i) => (i === dbg.bugIndex && !labState.dbgSolved) ? dbg.bugWord : w);
+
+      return `
+        <div class="bg-slate-900 text-white rounded-3xl shadow-lg border border-slate-700 p-5 sm:p-6 space-y-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span class="font-mono text-xs font-bold text-cyan-400">ROBOT_TERMINAL // DEBUGGER</span>
+              <h3 class="text-lg font-extrabold mt-0.5">Кликни върху сгрешената дума, за да поправиш робота!</h3>
+            </div>
+            <span class="px-3 py-1 rounded-full font-mono text-xs font-bold ${labState.dbgSolved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'}">
+              ${labState.dbgSolved ? 'STATUS: FIXED 100%' : 'STATUS: 1 BUG FOUND'}
+            </span>
+          </div>
+
+          <!-- Повреден код -->
+          <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-base sm:text-lg flex flex-wrap gap-2 leading-relaxed">
+            <span class="text-slate-600 select-none">01 &gt;</span>
+            ${displayWords.map((w, i) => `
+              <button onclick="selectBugWord(${i})"
+                class="px-2.5 py-1 rounded-lg transition border ${
+                  labState.dbgSolved && i === dbg.bugIndex
+                    ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold'
+                    : labState.dbgSelectedIdx === i
+                      ? 'bg-amber-500/20 border-amber-400 text-amber-200'
+                      : 'bg-slate-800/80 border-slate-700 hover:border-cyan-400 text-slate-100'
+                }">
+                ${w}
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Избор на кръпка (Patch) -->
+          ${labState.dbgSelectedIdx === dbg.bugIndex && !labState.dbgSolved ? `
+            <div class="p-4 rounded-2xl bg-slate-800 border border-cyan-500/40 space-y-3 animate-fade-in">
+              <div class="text-xs font-mono text-cyan-300">🎯 Бъгът е локализиран! Избери правилната „кръпка“ (patch):</div>
+              <div class="flex flex-wrap gap-2.5">
+                ${dbg.options.map(opt => `
+                  <button onclick="applyBugPatch('${opt.replace(/'/g, "\\'")}')"
+                    class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono font-bold text-sm transition">
+                    ${opt}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${labState.dbgSolved ? `
+            <div class="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-sm animate-fade-in">
+              <strong>✅ Роботът е поправен!</strong> ${dbg.explanation}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function selectBugWord(idx) {
+      if (labState.dbgSolved) return;
+      const dbg = sessionContent.m5.debugger;
+      if (idx === dbg.bugIndex) {
+        labState.dbgSelectedIdx = idx;
+        playTone('click');
+      } else {
+        playTone('wrong');
+        showToast('Тази дума е написана вярно! Потърси друга.', 'info');
+      }
+      renderActiveMission();
+    }
+
+    function applyBugPatch(opt) {
+      const dbg = sessionContent.m5.debugger;
+      if (opt === dbg.words[dbg.bugIndex]) {
+        labState.dbgSolved = true;
+        labState.solvedTabs.debugger = true;
+        playTone('correct');
+        showToast('🐞 Бъгът е отстранен успешно!', 'success');
+      } else {
+        playTone('wrong');
+        showToast('Тази кръпка не пасва. Опитай друга!', 'warning');
+      }
+      renderActiveMission();
+    }
+
+    // --- ТАБ В: СГЛОБИ ИЗРЕЧЕНИЕТО (АЛГОРИТЪМ) ---
+    function renderSentenceBuilderHTML() {
+      const sb = sessionContent.m5.sentenceBuilder;
+
+      return `
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
+          <div>
+            <span class="font-mono text-xs font-bold text-indigo-600 uppercase">АЛГОРИТЪМ НА ИЗРЕЧЕНИЕТО</span>
+            <h3 class="text-lg sm:text-xl font-extrabold text-slate-900 mt-0.5">Подреди блокчетата в правилно изречение</h3>
+            <p class="text-xs text-slate-500 mt-1">💡 Подсказка: ${sb.hint}</p>
+          </div>
+
+          <!-- Конструктор на изречението -->
+          <div class="p-4 rounded-2xl bg-indigo-50/70 border-2 border-dashed border-indigo-300 min-h-[76px] flex flex-wrap items-center gap-2">
+            ${labState.sbChosen.length === 0 ? `
+              <span class="text-indigo-400 text-sm font-medium">Кликни думите отдолу по ред, за да подредиш изречението...</span>
+            ` : labState.sbChosen.map((item, idx) => `
+              <button onclick="removeSbWord(${idx})" class="px-3.5 py-2 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-sm hover:bg-indigo-700 transition">
+                ${item.text}
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Разбъркани думи -->
+          <div class="flex flex-wrap gap-2">
+            ${labState.sbAvailable.map(item => {
+              const isUsed = labState.sbChosen.some(c => c.uid === item.uid);
+              return `
+                <button ${isUsed ? 'disabled' : ''} onclick="addSbWord('${item.uid}')"
+                  class="px-3.5 py-2 rounded-xl border-2 font-semibold text-sm transition ${
+                    isUsed ? 'opacity-30 bg-slate-100 border-slate-200 text-slate-400' : 'bg-white border-slate-300 hover:border-indigo-500 text-slate-800 shadow-sm'
+                  }">
+                  ${item.text}
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <button onclick="checkSentenceBuilder()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">
+              ▶️ Изпълни алгоритъма
+            </button>
+            <button onclick="labState.sbChosen=[]; labState.sbSolved=false; renderActiveMission();" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition">
+              Започни отначало
+            </button>
+          </div>
+
+          ${labState.sbSolved ? `
+            <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold text-sm animate-fade-in">
+              ✅ Алгоритъмът работи безупречно! „${sb.correct.join(' ')}“
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function addSbWord(uid) {
+      const item = labState.sbAvailable.find(w => w.uid === uid);
+      if (item) {
+        labState.sbChosen.push(item);
+        playTone('click');
+        renderActiveMission();
+      }
+    }
+
+    function removeSbWord(idx) {
+      labState.sbChosen.splice(idx, 1);
+      labState.sbSolved = false;
+      playTone('click');
+      renderActiveMission();
+    }
+
+    function checkSentenceBuilder() {
+      const target = sessionContent.m5.sentenceBuilder.correct.join(' ');
+      const attempt = labState.sbChosen.map(w => w.text).join(' ');
+      if (attempt === target) {
+        labState.sbSolved = true;
+        labState.solvedTabs.sentenceBuilder = true;
+        playTone('correct');
+        showToast('⚙️ Отлично! Изречението е подредено вярно!', 'success');
+      } else {
+        playTone('wrong');
+        showToast('Редът на думите не е съвсем точен. Опитай пак!', 'warning');
+      }
+      renderActiveMission();
+    }
+
+    async function generateM5WithAI() {
+      const btn = document.getElementById('aiM5Btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Генериране...'; }
+      const diff = DIFFICULTIES[appState.difficulty];
+      const prompt = `Създай 3 конструкторски задачи по БЕЛ за 4. клас (ниво: ${diff.promptDesc}) в един JSON обект:
+      {
+        "wordBuilder": {"clue": "кратко описание на думата", "parts": [{"text": "представка/част", "type": "prefix"}, {"text": "корен", "type": "root"}, {"text": "наставка", "type": "suffix"}], "distractors": [{"text": "грешна част", "type": "prefix"}, {"text": "грешна наставка", "type": "suffix"}]},
+        "debugger": {"words": ["правилно", "изречение", "от", "5-7", "думи."], "bugIndex": 1, "bugWord": "сгрешена_версия_на_думата_на_bugIndex", "options": ["вярната_дума", "грешна1", "грешна2"], "explanation": "кратко правило за 4. клас"},
+        "sentenceBuilder": {"correct": ["Правилно", "подредено", "изречение", "от", "5-7", "думи."], "hint": "кратка подсказка"}
+      }`;
+
+      const res = await callGeminiJSON(prompt);
+      if (res && res.wordBuilder && res.debugger && res.sentenceBuilder) {
+        sessionContent.m5 = res;
+        initLabStates();
+        showToast('✨ Новите конструкторски задачи от ИИ са готови!', 'success');
+      } else {
+        showToast('Използват се задачите от вградената лаборатория.', 'info');
+      }
+      renderActiveMission();
+    }
+
+    // =========================================================================
+    // 15. МОДАЛЕН ПРОЗОРЕЦ: ОТЧЕТ ЗА ДНЕС (ЗА УЧИТЕЛЯ И РОДИТЕЛЯ)
+    // =========================================================================
+    function openReportModal() {
+      const todayRec = appState.dailyProgress[todayStr];
+      const completedCount = Object.keys(todayRec.completed).length;
+
+      document.getElementById('reportDateSub').textContent = `Дата: ${todayStr} • Ранг: ${document.getElementById('rankBadge').textContent}`;
+      document.getElementById('repMissions').textContent = `${completedCount}/5`;
+      document.getElementById('repTodayXp').textContent = `+${todayRec.todayXp}`;
+      document.getElementById('repTotalXp').textContent = appState.xp;
+
+      const listEl = document.getElementById('reportList');
+      listEl.innerHTML = MISSIONS_META.map(m => {
+        const rec = todayRec.completed[m.id];
+        return `
+          <div class="flex items-center justify-between p-3 rounded-2xl border ${rec ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}">
+            <div class="flex items-center gap-2.5">
+              <span>${m.icon}</span>
+              <div>
+                <div class="text-sm font-bold text-slate-800">${m.title}</div>
+                <div class="text-xs text-slate-500">${rec ? `Ниво: ${rec.difficulty} • ${rec.time}` : 'Все още не е изпълнена'}</div>
+              </div>
+            </div>
+            <span class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg ${rec ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">
+              ${rec ? `+${rec.xp} XP` : 'Очаква'}
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      const hasReadingAudio = !!(activeRecorders['m1'] && activeRecorders['m1'].blob);
+      const hasOralAudio = !!getLatestOralRecorder();
+      document.getElementById('reportAudioSummary').innerHTML = `
+        <span>🎙️ Четене (Текст 1): <strong class="${hasReadingAudio ? 'text-emerald-700' : 'text-slate-400'}">${hasReadingAudio ? 'Записано ✓' : 'Няма запис'}</strong></span>
+        <span>💬 Устни отговори: <strong class="${hasOralAudio ? 'text-emerald-700' : 'text-slate-400'}">${hasOralAudio ? 'Записано ✓' : 'Няма запис'}</strong></span>
+      `;
+
+      const modal = document.getElementById('reportModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeReportModal() {
+      const modal = document.getElementById('reportModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function copyReportText() {
+      const todayRec = appState.dailyProgress[todayStr];
+      const lines = [
+        `📋 Отчет „Мисия БЕЛ: Лабораторията на Мартин“ (${todayStr})`,
+        `Изпълнени мисии: ${Object.keys(todayRec.completed).length}/5 | Спечелени днес: +${todayRec.todayXp} XP | Общо: ${appState.xp} XP`,
+        ''
+      ];
+      MISSIONS_META.forEach(m => {
+        const r = todayRec.completed[m.id];
+        lines.push(`${r ? '✅' : '⬜'} ${m.title}: ${r ? `Изпълнена (${r.difficulty}, +${r.xp} XP)` : 'Неизпълнена'}`);
+      });
+
+      const ta = document.createElement('textarea');
+      ta.value = lines.join('\n');
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('📋 Отчетът е копиран! Можеш да го поставиш в съобщение.', 'success');
+      } catch (e) {
+        showToast('Неуспешно копиране.', 'error');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // =========================================================================
+    // 15.5. ВРЪЗКА С GOOGLE DRIVE И „ИЗПРАТИ НА МИС“
+    // =========================================================================
+    function updateDriveStatusDot() {
+      const dot = document.getElementById('driveStatusDot');
+      if (!dot) return;
+      if (appState.driveEndpoint && appState.driveEndpoint.startsWith('http')) {
+        dot.className = 'absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900';
+      } else {
+        dot.className = 'absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-slate-900';
+      }
+    }
+
+    function openDriveSettingsModal(showWarning = false) {
+      document.getElementById('driveEndpointInput').value = appState.driveEndpoint || '';
+      document.getElementById('driveSetupNotice').classList.toggle('hidden', !showWarning);
+      const modal = document.getElementById('driveSettingsModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeDriveSettingsModal() {
+      const modal = document.getElementById('driveSettingsModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function saveDriveEndpoint() {
+      const val = document.getElementById('driveEndpointInput').value.trim();
+      if (val && !val.startsWith('https://')) {
+        showToast('Моля, въведи валиден URL адрес (започващ с https://).', 'warning');
+        return;
+      }
+      appState.driveEndpoint = val;
+      saveState();
+      updateDriveStatusDot();
+      document.getElementById('driveSetupNotice').classList.add('hidden');
+      playTone('correct');
+      showToast(val ? '✅ Връзката с Google Drive е запазена!' : 'Връзката с Google Drive е изчистена.', 'success');
+    }
+
+    function copyTextFallback(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg, 'success');
+      } catch (e) {
+        showToast('Неуспешно копиране.', 'error');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function copyStudentLink() {
+      const url = document.getElementById('driveEndpointInput').value.trim() || appState.driveEndpoint;
+      if (!url) {
+        showToast('Първо въведи и запази Google Apps Script URL адреса!', 'warning');
+        return;
+      }
+      appState.driveEndpoint = url;
+      saveState();
+      updateDriveStatusDot();
+
+      const base = (window.location.href && window.location.href.startsWith('http'))
+        ? window.location.origin + window.location.pathname
+        : 'https://твоят-адрес-на-приложението.html';
+      const studentLink = `${base}?endpoint=${encodeURIComponent(url)}`;
+      copyTextFallback(studentLink, '🔗 Готовият линк за Мартин е копиран!');
+    }
+
+    function copyAppsScriptCode() {
+      const code = document.getElementById('appsScriptCodeBlock').textContent;
+      copyTextFallback(code, '📋 Google Apps Script кодът е копиран!');
+    }
+
+    function getLatestOralRecorder() {
+      if (activeRecorders['m2_oral'] && activeRecorders['m2_oral'].blob) {
+        return activeRecorders['m2_oral'];
+      }
+      const oralKeys = Object.keys(activeRecorders).filter(k => k.startsWith('m2_q') && activeRecorders[k].blob);
+      if (oralKeys.length > 0) {
+        return activeRecorders[oralKeys[oralKeys.length - 1]];
+      }
+      return null;
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result || '';
+          const commaIdx = result.indexOf(',');
+          resolve(commaIdx !== -1 ? result.slice(commaIdx + 1) : result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function closeSentBanner() {
+      const el = document.getElementById('sentSuccessBanner');
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+
+    async function sendToMiss() {
+      if (!appState.driveEndpoint || !appState.driveEndpoint.startsWith('http')) {
+        closeReportModal();
+        openDriveSettingsModal(true);
+        return;
+      }
+
+      const headerBtn = document.getElementById('headerSendMissBtn');
+      const modalBtn = document.getElementById('modalSendMissBtn');
+      const origHeaderHtml = headerBtn ? headerBtn.innerHTML : '';
+      const origModalHtml = modalBtn ? modalBtn.innerHTML : '';
+
+      const setLoading = (loading) => {
+        [headerBtn, modalBtn].forEach(btn => {
+          if (!btn) return;
+          btn.disabled = loading;
+          if (loading) {
+            btn.innerHTML = '<span>⏳ Изпращам към мис...</span>';
+          }
+        });
+        if (!loading) {
+          if (headerBtn) headerBtn.innerHTML = origHeaderHtml;
+          if (modalBtn) modalBtn.innerHTML = origModalHtml;
+        }
+      };
+
+      setLoading(true);
+      showToast('⏳ Изпращам към мис...', 'info');
+
+      try {
+        const readingRec = activeRecorders['m1'] && activeRecorders['m1'].blob ? activeRecorders['m1'] : null;
+        const oralRec = getLatestOralRecorder();
+
+        const readingAudioBase64 = readingRec ? await blobToBase64(readingRec.blob) : '';
+        const oralAudioBase64 = oralRec ? await blobToBase64(oralRec.blob) : '';
+
+        const todayRec = appState.dailyProgress[todayStr];
+        const completedList = MISSIONS_META
+          .filter(m => !!todayRec.completed[m.id])
+          .map(m => `${m.title} (${todayRec.completed[m.id].difficulty})`);
+
+        const qTotal = Array.isArray(sessionContent.m4) ? sessionContent.m4.length : 5;
+        const rulesScoreStr = (quizState.finished || quizState.index > 0 || quizState.answered)
+          ? `${quizState.score}/${qTotal} (${Math.round((quizState.score / qTotal) * 100)}%)`
+          : 'Неизпълнена';
+
+        const labSolvedCount = Object.values(labState.solvedTabs).filter(Boolean).length;
+
+        const payload = {
+          date: new Date().toLocaleString('bg-BG'),
+          student: 'Мартин',
+          level: DIFFICULTIES[appState.difficulty].name,
+          xp: {
+            today: todayRec.todayXp,
+            total: appState.xp
+          },
+          completedMissions: completedList,
+          dictationText: dictationState.userText || '',
+          dictationScore: dictationState.scorePct,
+          rulesScore: rulesScoreStr,
+          constructorScore: `${labSolvedCount}/3`,
+          readingAudioBase64: readingAudioBase64,
+          readingAudioMime: readingRec ? (readingRec.mimeType || 'audio/webm') : '',
+          oralAudioBase64: oralAudioBase64,
+          oralAudioMime: oralRec ? (oralRec.mimeType || 'audio/webm') : ''
+        };
+
+        await fetch(appState.driveEndpoint, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        closeReportModal();
+        playTone('complete');
+
+        const audioNotes = [];
+        if (readingAudioBase64) audioNotes.push('запис от четене');
+        if (oralAudioBase64) audioNotes.push('запис от устни отговори');
+        document.getElementById('sentSuccessDetails').textContent = audioNotes.length > 0
+          ? `Изпратени са дневните резултати + ${audioNotes.join(' и ')} директно в Google Drive на мис!`
+          : 'Дневните резултати и точките са изпратени успешно в Google Drive на мис!';
+
+        const banner = document.getElementById('sentSuccessBanner');
+        banner.classList.remove('hidden');
+        banner.classList.add('flex');
+        showToast('✅ Изпратено на мис!', 'success');
+      } catch (err) {
+        playTone('wrong');
+        showToast('Възникна грешка при изпращането. Провери интернет връзката или настройките (⚙️).', 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // =========================================================================
+    // 16. ИНИЦИАЛИЗАЦИЯ ПРИ ЗАРЕЖДАНЕ
+    // =========================================================================
+    window.onload = function () {
+      const options = { weekday: 'short', day: 'numeric', month: 'long' };
+      document.getElementById('todayDateLabel').textContent = new Date().toLocaleDateString('bg-BG', options);
+
+      // Автоматично зареждане на Google Drive endpoint от URL параметър (?endpoint=...)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const endpointParam = params.get('endpoint');
+        if (endpointParam && endpointParam.startsWith('https://')) {
+          appState.driveEndpoint = endpointParam;
+          saveState();
+        }
+      } catch (e) {}
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+      }
+
+      updateSoundIcon();
+      updateDriveStatusDot();
+      loadDefaultContentForDifficulty(appState.difficulty);
+      updateHUD();
+      renderDifficultySelector();
+      renderMissionTabs();
+      renderActiveMission();
+    };
+  </script>
+</body>
+</html>
